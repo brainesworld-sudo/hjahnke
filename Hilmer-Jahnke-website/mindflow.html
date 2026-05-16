@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MindFlow – Mindmaps</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh;}
+
+@media(min-width:769px){
+  body{margin:0;padding:0;}
+  #mobile-preview{display:none;}
+  #desktop-frame{display:block;width:100%;height:100vh;border:none;}
+}
+@media(max-width:768px){
+  #desktop-frame{display:none;}
+  #mobile-preview{display:flex;flex-direction:column;min-height:100vh;}
+}
+
+.banner{
+  background:#007aff;
+  color:#fff;
+  text-align:center;
+  padding:16px 20px;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.5;
+  position:sticky;top:0;z-index:100;
+}
+.banner-sub{font-size:12px;font-weight:400;opacity:.85;margin-top:3px;}
+
+.preview-body{flex:1;padding:20px 16px 40px;}
+.preview-title{font-size:22px;font-weight:700;margin-bottom:6px;color:#007aff;}
+.preview-desc{font-size:14px;color:#666;margin-bottom:24px;line-height:1.6;}
+
+/* Fake mindmap */
+.fake-canvas{background:#fff;border-radius:16px;padding:24px;margin-bottom:16px;min-height:240px;position:relative;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;}
+.fake-node-center{background:#007aff;color:#fff;border-radius:20px;padding:12px 22px;font-size:14px;font-weight:600;text-align:center;position:relative;z-index:2;}
+.fake-branches{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.fake-node{background:#f0f7ff;border:1.5px solid #007aff;border-radius:12px;padding:8px 14px;font-size:12px;color:#007aff;font-weight:500;position:absolute;}
+.fake-node.n1{top:20px;left:20px;}
+.fake-node.n2{top:20px;right:20px;}
+.fake-node.n3{bottom:20px;left:20px;}
+.fake-node.n4{bottom:20px;right:20px;}
+
+.fake-toolbar{background:#fff;border-radius:12px;padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;border:1px solid #e5e5e5;margin-bottom:16px;}
+.fake-tb-btn{background:#f5f5f7;border-radius:8px;padding:8px 14px;font-size:12px;color:#333;font-weight:500;}
+.fake-tb-btn.blue{background:#007aff;color:#fff;}
+</style>
+</head>
+<body>
+
+<iframe id="desktop-frame" src="mindflow_app.html"></iframe>
+
+<div id="mobile-preview">
+  <div class="banner">
+    🖥 Bitte auf dem Desktop ausprobieren
+    <div class="banner-sub">Diese App ist für große Bildschirme optimiert</div>
+  </div>
+
+  <div class="preview-body">
+    <div class="preview-title">🧠 MindFlow – Mindmaps</div>
+    <div class="preview-desc">Erstelle Mindmaps im Apple-Stil. Strukturiere deine Gedanken und mache Zusammenhänge sichtbar.</div>
+
+    <div class="fake-canvas">
+      <div class="fake-node n1">Strategie</div>
+      <div class="fake-node n2">KI-Tools</div>
+      <div class="fake-node n3">Prozesse</div>
+      <div class="fake-node n4">Team</div>
+      <div class="fake-node-center">KI-Einführung</div>
+    </div>
+
+    <div class="fake-toolbar">
+      <div class="fake-tb-btn blue">+ Knoten</div>
+      <div class="fake-tb-btn">Verbinden</div>
+      <div class="fake-tb-btn">Exportieren</div>
+      <div class="fake-tb-btn">Löschen</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

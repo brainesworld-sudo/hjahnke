@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>MindFlow Pro — Dashboard & Task Management</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --apple-bg: #f5f5f7;
+            --apple-accent: #007aff;
+            --apple-delete: #ff8e86;
+            --apple-text: #1d1d1f;
+            --apple-success: #34c759;
+            --apple-info: #af52de;
+            --apple-warning: #ff3b30;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--apple-bg);
+            overflow: hidden;
+            transition: background-color 0.3s;
+        }
+
+        .alarm-active { animation: extremeFlash 0.5s infinite; }
+        @keyframes extremeFlash { 
+            0% { background-color: var(--apple-bg); } 
+            50% { background-color: rgba(255, 59, 48, 0.5); } 
+            100% { background-color: var(--apple-bg); } 
+        }
+
+        /* Endloser Hintergrund durch Verschiebung */
+        #viewport {
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            cursor: grab;
+            position: relative;
+        }
+        #viewport:active { cursor: grabbing; }
+
+        #canvas-container { 
+            position: absolute; 
+            top: 0; left: 0;
+            width: 10000px; height: 10000px; /* Sehr große Leinwand */
+            background-color: transparent; 
+            transform-origin: 0 0;
+        }
+        
+        svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+        .node {
+            position: absolute; width: 210px; padding: 12px;
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px);
+            border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 2px solid transparent; z-index: 10; cursor: grab;
+            transition: opacity 0.3s;
+        }
+
+        .node.is-done { opacity: 0.6; }
+        .node-content-wrapper { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+
+        .todo-checkbox {
+            display: none; width: 18px; height: 18px; min-width: 18px;
+            border-radius: 50%; border: 2px solid #ccc; cursor: pointer;
+            align-items: center; justify-content: center; background: white; margin-top: 2px;
+        }
+
+        .node.type-todo .todo-checkbox { display: flex; }
+        .node.is-done .todo-checkbox { background: var(--apple-success); border-color: var(--apple-success); }
+        .node.is-done .todo-checkbox::after { content: '✓'; color: white; font-size: 10px; }
+
+        .node textarea {
+            width: 100%; border: none; background: transparent; font-family: inherit;
+            font-size: 14px; font-weight: 600; color: var(--apple-text); outline: none; resize: none;
+        }
+        .node.is-done textarea { text-decoration: line-through; color: #8e8e93; }
+
+        .badge-container { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+        .badge { font-size: 10px; font-weight: 800; color: white; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; }
+        .badge-date { background: #8e8e93; }
+        .badge-info { background: var(--apple-info); }
+        
+        .badge-reminder { 
+            background: #ffffff; 
+            color: #1d1d1f;
+            border: 1.5px solid #007aff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .badge-delete-btn { cursor: pointer; font-size: 10px; opacity: 1; color: #8e8e93; }
+
+        #alarm-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px);
+            display: none; align-items: center; justify-content: center; z-index: 9999;
+        }
+        .modal-content {
+            background: white; padding: 40px; border-radius: 32px; width: 350px;
+            text-align: center; box-shadow: 0 30px 100px rgba(0,0,0,0.5);
+        }
+        .modal-btn { background: var(--apple-accent); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
+
+        #dashboard {
+            position: fixed; right: 25px; top: 85px; width: 320px; max-height: 75vh;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(25px);
+            border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            z-index: 200; display: none; flex-direction: column; padding: 24px; overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .dash-section { margin-bottom: 20px; }
+        .dash-title { font-size: 13px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 4px; }
+        .dash-item { font-size: 14px; font-weight: 500; color: var(--apple-text); padding: 8px 0; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(0,0,0,0.03); }
+        .dash-item:last-child { border-bottom: none; }
+        .dash-icon { font-size: 16px; min-width: 20px; text-align: center; }
+
+        .line-toggle {
+            position: absolute; width: 22px; height: 22px; background: white;
+            border: 2px solid #ddd; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; cursor: pointer; z-index: 50;
+            transform: translate(-50%, -50%); pointer-events: auto; font-weight: bold; font-size: 14px;
+        }
+
+        .controls { display: flex; gap: 4px; justify-content: flex-end; padding-top: 6px; border-top: 1px solid #f0f0f0; }
+        .btn { width: 24px; height: 24px; border-radius: 6px; border: none; cursor: pointer; color: white; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+        
+        .toolbar {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(20px);
+            padding: 8px 16px; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            z-index: 100; display: flex; gap: 8px; align-items: center;
+        }
+        .toolbar button { border: none; background: rgba(0,0,0,0.05); cursor: pointer; font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 12px; }
+    </style>
+</head>
+<body onclick="enableAudio()">
+
+    <div class="toolbar">
+        <span style="font-weight: 800; margin-right: 10px;">MindFlow</span>
+        <button onclick="saveToFile()">Sichern</button>
+        <button onclick="document.getElementById('fileInput').click()">Öffnen</button>
+        <button onclick="toggleDashboard()">📋 Übersicht</button>
+        <button onclick="testAlarm()" style="background:#ff9500; color:white;">TEST ALARM</button>
+        <button onclick="exportPNG()">PNG</button>
+        <button onclick="resetMap()" style="color:red">Reset</button>
+    </div>
+
+    <div id="alarm-modal">
+        <div class="modal-content">
+            <h2 style="color:var(--apple-warning)">🔔 ERINNERUNG</h2>
+            <p id="alarm-text"></p>
+            <button class="modal-btn" onclick="closeAlarm()">OK</button>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" style="display: none;" onchange="loadFromFile(event)">
+    
+    <div id="viewport">
+        <div id="canvas-container">
+            <svg id="svg-canvas"></svg>
+            <div id="nodes-layer"></div>
+            <div id="toggle-layer"></div>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <div class="dash-section">
+            <div class="dash-title">Aufgaben</div>
+            <div id="dash-todos"></div>
+        </div>
+        <div class="dash-section">
+            <div class="dash-title">Termine</div>
+            <div id="dash-dates"></div>
+        </div>
+        <div class="dash-section">
+            <div class="dash-title">Wichtige Infos</div>
+            <div id="dash-infos"></div>
+        </div>
+    </div>
+
+    <script>
+        let nodes = [];
+        let offset = { x: -4500, y: -4500 }; // Startposition in der Mitte der 10000px Leinwand
+        const colors = ['#007aff', '#34c759', '#af52de', '#ff9500', '#5856d6', '#ff2d55', '#5ac8fa'];
+        const container = document.getElementById('canvas-container');
+        const nodesLayer = document.getElementById('nodes-layer');
+        const viewport = document.getElementById('viewport');
+        const svg = document.getElementById('svg-canvas');
+        let audioCtx;
+        let titleInterval;
+
+        function enableAudio() { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+        function init() {
+            const data = localStorage.getItem('mindmap_v2');
+            const savedOffset = localStorage.getItem('mindmap_offset');
+            if(savedOffset) offset = JSON.parse(savedOffset);
+            
+            nodes = data ? JSON.parse(data) : [{ id: 1, text: "Hauptpunkt", x: 5000, y: 5000, parentId: null, isMain: true, type: 'neutral', done: false, date: "", info: false, collapsed: false, reminder: "" }];
+            
+            updateCanvasTransform();
+            
+            // Hintergrund verschieben (Panning)
+            viewport.onmousedown = (e) => {
+                if (e.target !== viewport && e.target !== container && e.target !== svg) return;
+                let startX = e.clientX - offset.x;
+                let startY = e.clientY - offset.y;
+                viewport.onmousemove = (m) => {
+                    offset.x = m.clientX - startX;
+                    offset.y = m.clientY - startY;
+                    updateCanvasTransform();
+                };
+                viewport.onmouseup = () => {
+                    viewport.onmousemove = null;
+                    localStorage.setItem('mindmap_offset', JSON.stringify(offset));
+                };
+            };
+
+            setInterval(checkReminders, 15000);
+            render();
+        }
+
+        function updateCanvasTransform() {
+            container.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
+        }
+
+        function checkReminders() {
+            const now = new Date();
+            const currentStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0') + "T" + String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0');
+            nodes.forEach(n => {
+                if (n.reminder && n.reminder === currentStr) {
+                    showAlarm(n);
+                    n.reminder = ""; save(); render();
+                }
+            });
+        }
+
+        function testAlarm() { showAlarm({text: "TEST ALARM FUNKTIONIERT"}); }
+
+        function showAlarm(node) {
+            if(audioCtx) {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            }
+            document.body.classList.add('alarm-active');
+            clearInterval(titleInterval);
+            titleInterval = setInterval(() => { document.title = document.title === "!!! ALARM !!!" ? "MindFlow Pro" : "!!! ALARM !!!"; }, 500);
+            document.getElementById('alarm-text').innerText = node.text;
+            document.getElementById('alarm-modal').style.display = 'flex';
+            setTimeout(() => { alert("ERINNERUNG: " + node.text); }, 100);
+        }
+
+        function closeAlarm() { 
+            document.getElementById('alarm-modal').style.display = 'none'; 
+            document.body.classList.remove('alarm-active');
+            clearInterval(titleInterval); document.title = "MindFlow Pro";
+        }
+
+        function render() {
+            nodesLayer.innerHTML = '';
+            document.getElementById('toggle-layer').innerHTML = '';
+            nodes.forEach(node => {
+                if (isNodeHidden(node.id)) return;
+                const nodeColor = getNodeColor(node);
+                const div = document.createElement('div');
+                div.className = `node ${node.done ? 'is-done' : ''} type-${node.type}`;
+                div.style.left = node.x + 'px'; div.style.top = node.y + 'px'; div.style.borderColor = nodeColor;
+                div.id = `node-${node.id}`;
+                div.innerHTML = `
+                    <div class="node-content-wrapper">
+                        <div class="todo-checkbox" onclick="event.stopPropagation(); toggleDone(${node.id})"></div>
+                        <div style="flex-grow:1">
+                            <div class="badge-container">
+                                ${node.date ? `<span class="badge badge-date">📅 ${node.date} <span class="badge-delete-btn" onclick="updateProp(${node.id}, 'date', '')">✕</span></span>` : ''}
+                                ${node.info ? `<span class="badge badge-info">ℹ Info <span class="badge-delete-btn" onclick="updateProp(${node.id}, 'info', false)">✕</span></span>` : ''}
+                                ${node.reminder ? `<span class="badge badge-reminder">🟡 ${node.reminder.replace('T', ' ')} <span class="badge-delete-btn" onclick="updateProp(${node.id}, 'reminder', '')">✕</span></span>` : ''}
+                            </div>
+                            <textarea oninput="silentUpdateText(${node.id}, this.value); autoResize(this)" rows="1">${node.text}</textarea>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn" style="background:#555" onclick="toggleType(${node.id})">○</button>
+                        <button class="btn" style="background:var(--apple-info)" onclick="updateProp(${node.id}, 'info', !${node.info})">ℹ</button>
+                        <div class="btn" style="background:#8e8e93; position:relative">📅<input type="date" style="position:absolute;opacity:0;width:100%;cursor:pointer" onchange="updateProp(${node.id}, 'date', this.value)"></div>
+                        <div class="btn" style="background:var(--apple-warning); position:relative">🔔<input type="datetime-local" style="position:absolute;opacity:0;width:100%;cursor:pointer" onchange="updateProp(${node.id}, 'reminder', this.value)"></div>
+                        <button class="btn" style="background:#ff3b30" onclick="removeNode(${node.id})">×</button>
+                        <button class="btn" style="background:${nodeColor}" onclick="addNode(${node.id})">+</button>
+                    </div>`;
+                div.onmousedown = (e) => {
+                    e.stopPropagation();
+                    if(e.target.closest('.controls') || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('todo-checkbox')) return;
+                    let sX = e.clientX - node.x, sY = e.clientY - node.y;
+                    document.onmousemove = (m) => { node.x = m.clientX - sX; node.y = m.clientY - sY; div.style.left = node.x + 'px'; div.style.top = node.y + 'px'; drawLines(); };
+                    document.onmouseup = () => { document.onmousemove = null; save(); updateDashboard(); };
+                };
+                nodesLayer.appendChild(div); autoResize(div.querySelector('textarea'));
+            });
+            drawLines(); updateDashboard();
+        }
+
+        function silentUpdateText(id, val) { const n = nodes.find(x => x.id === id); if(n) { n.text = val; save(); updateDashboard(); } }
+        function isNodeHidden(id) { const n = nodes.find(x => x.id === id); if(!n || !n.parentId) return false; const p = nodes.find(x => x.id === n.parentId); return p.collapsed || isNodeHidden(p.id); }
+        
+        function drawLines() {
+            svg.innerHTML = ''; document.getElementById('toggle-layer').innerHTML = '';
+            nodes.forEach(n => {
+                if(n.parentId && !isNodeHidden(n.id)) {
+                    const p = nodes.find(x => x.id === n.parentId), pEl = document.getElementById(`node-${p.id}`), nEl = document.getElementById(`node-${n.id}`);
+                    if(!pEl || !nEl) return;
+                    const x1 = p.x + pEl.offsetWidth, y1 = p.y + pEl.offsetHeight/2, x2 = n.x, y2 = n.y + nEl.offsetHeight/2, cp = x1 + (x2-x1)/2, midY = (y1+y2)/2;
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    path.setAttribute("d", `M ${x1} ${y1} C ${cp} ${y1}, ${cp} ${y2}, ${x2} ${y2}`);
+                    const col = getNodeColor(n); path.setAttribute("stroke", col); path.setAttribute("stroke-width", "3"); path.setAttribute("fill", "none"); path.setAttribute("opacity", "0.4");
+                    svg.appendChild(path);
+                    const btn = document.createElement('div'); btn.className = 'line-toggle'; btn.style.left = cp+'px'; btn.style.top = midY+'px'; btn.style.color = col; btn.style.borderColor = col; btn.innerHTML = n.collapsed ? '+' : '−';
+                    btn.onclick = () => { n.collapsed = !n.collapsed; save(); render(); }; document.getElementById('toggle-layer').appendChild(btn);
+                }
+            });
+        }
+
+        function toggleType(id) { const n = nodes.find(x => x.id === id); const types = ['neutral', 'todo', 'date']; n.type = types[(types.indexOf(n.type) + 1) % 3]; save(); render(); }
+        function updateProp(id, prop, val) { const n = nodes.find(x => x.id === id); if(n) { n[prop] = val; save(); render(); } }
+        function toggleDone(id) { updateProp(id, 'done', !nodes.find(x => x.id === id).done); }
+        
+        function updateDashboard() {
+            const tD = document.getElementById('dash-todos'), dD = document.getElementById('dash-dates'), iD = document.getElementById('dash-infos');
+            if(!tD) return; tD.innerHTML = ''; dD.innerHTML = ''; iD.innerHTML = '';
+            nodes.forEach(n => {
+                if(n.type === 'todo') {
+                    tD.innerHTML += `<div class="dash-item"><span class="dash-icon">${n.done?'✅':'⬜'}</span> ${n.text}</div>`;
+                }
+                if(n.date) {
+                    dD.innerHTML += `<div class="dash-item"><span class="dash-icon">🗓️</span> ${n.text} <span style="margin-left:auto; font-size:11px; opacity:0.6;">${n.date}</span></div>`;
+                }
+                if(n.info) {
+                    iD.innerHTML += `<div class="dash-item"><span class="dash-icon" style="color:var(--apple-info)">ℹ️</span> ${n.text}</div>`;
+                }
+            });
+        }
+
+        function getNodeColor(n) {
+            if (n.isMain) return "#007aff";
+            let curr = n;
+            while (curr.parentId) {
+                let p = nodes.find(x => x.id === curr.parentId);
+                if (p.isMain) return colors[nodes.filter(x => x.parentId === p.id).findIndex(x => x.id === curr.id) % colors.length];
+                curr = p;
+            } return "#8e8e93";
+        }
+        function addNode(pId) { const p = nodes.find(x => x.id === pId); nodes.push({ id: Date.now(), text: "Neu", x: p.x+250, y: p.y, parentId: pId, type: 'neutral', done: false, date: "", info: false, collapsed: false, reminder: "" }); save(); render(); }
+        function removeNode(id) { if(nodes.length > 1) { nodes = nodes.filter(x => x.id !== id && x.parentId !== id); save(); render(); } }
+        function toggleDashboard() { const d = document.getElementById('dashboard'); d.style.display = d.style.display === 'flex' ? 'none' : 'flex'; }
+        function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+        function save() { localStorage.setItem('mindmap_v2', JSON.stringify(nodes)); }
+        function saveToFile() {
+            const m = nodes.find(n => n.isMain); 
+            const baseName = m ? m.text.replace(/[^a-z0-9]/gi, '_') : 'MindFlow';
+            const dateStr = new Date().toISOString().split('T')[0];
+            const fileName = `${baseName}_${dateStr}.json`;
+            const blob = new Blob([JSON.stringify(nodes)], {type: "application/json"});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName; a.click();
+        }
+        function loadFromFile(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { nodes = JSON.parse(e.target.result); save(); render(); }; reader.readAsText(file); }
+        function resetMap() { if(confirm("Löschen?")) { localStorage.clear(); localStorage.removeItem('mindmap_offset'); location.reload(); } }
+        async function exportPNG() { 
+            const originalOffset = {...offset};
+            offset = {x:0, y:0}; updateCanvasTransform(); // Reset für Export
+            const canvas = await html2canvas(container, { backgroundColor: "#f5f5f7", scale: 2 }); 
+            offset = originalOffset; updateCanvasTransform(); // Zurücksetzen
+            const link = document.createElement('a'); link.download = 'MindMap.png'; link.href = canvas.toDataURL(); link.click(); 
+        }
+        init();
+    </script>
+</body>
+</html>

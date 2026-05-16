@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Aero-Dash V64 - Daily Log Deck</title>
+    <style>
+        :root {
+            --bg: #05070a;
+            --panel: #1a1c20;
+            --cyan: #00f2ff;
+            --blue: #007AFF;
+            --red: #ff3b30;
+            --green: #4cd964;
+            --gold: #ffd700;
+            --font: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--bg); color: #d0d0d0; font-family: var(--font);
+            margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center;
+            transition: background-color 0.5s ease;
+        }
+
+        body.blue-theme { --bg: #001a33; }
+
+        .hud-container {
+            width: 100%; max-width: 1400px;
+            background: #000; border: 4px solid #333; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center;
+            box-shadow: inset 0 0 60px rgba(0, 242, 255, 0.08); margin-bottom: 25px;
+            position: relative; overflow: hidden;
+            padding: 10px; gap: 10px; box-sizing: border-box;
+        }
+        @media(min-width:769px){
+          .hud-container{height:420px;display:grid;grid-template-columns:350px 1fr 400px;align-items:center;padding:0 20px;gap:0;}
+        }
+
+        .hud-column { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 15px; }
+
+        .nav-monitor-placeholder { width: 320px; height: 200px; display: flex; align-items: center; justify-content: center; }
+        .nav-monitor-box {
+            display: none; width: 310px; height: 190px; border: 2px solid var(--blue);
+            background: #000; position: relative; overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 122, 255, 0.2);
+        }
+        .nav-map-svg { width: 100%; height: 100%; }
+
+        .center-stack { gap: 10px; position: relative; }
+        
+        #hud-date-wrapper { 
+            display: none; 
+            text-align: center;
+            background: rgba(0, 242, 255, 0.1); 
+            padding: 8px 20px; border-radius: 4px; border: 1px solid var(--blue);
+            margin-bottom: 5px; text-shadow: 0 0 10px var(--cyan);
+        }
+        #hud-date { color: var(--cyan); font-weight: bold; font-size: 1.1rem; }
+        #hud-kw { color: var(--gold); font-size: 0.8rem; margin-top: 2px; }
+
+        .switch-panel { display: flex; gap: 12px; background: #111; padding: 15px; border-radius: 8px; border: 1px solid #444; justify-content: center; }
+        .switch-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .toggle-switch { width: 35px; height: 50px; background: #222; border: 2px solid #444; position: relative; cursor: pointer; border-radius: 4px; }
+        .toggle-handle { width: 18px; height: 25px; background: #888; position: absolute; left: 8px; top: 4px; transition: 0.2s; border-radius: 2px; }
+        .toggle-switch.on .toggle-handle { top: 21px; background: #ccc; }
+        .diode { width: 8px; height: 8px; border-radius: 50%; background: #200; transition: 0.3s; }
+        .diode.on-green { background: var(--green); box-shadow: 0 0 10px var(--green); }
+        .diode.on-blue { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+
+        #mission-timer { font-size: 3.5rem; font-weight: bold; color: var(--cyan); text-shadow: 0 0 15px rgba(0, 242, 255, 0.5); margin: 5px 0; }
+
+        .status-container { display: flex; gap: 10px; margin-top: 5px; }
+        .status-btn { 
+            background: #111; border: 1px solid #444; color: #888; cursor: pointer; 
+            padding: 5px 12px; border-radius: 4px; font-size: 0.7rem; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .status-btn:hover { border-color: var(--cyan); color: #fff; }
+        .status-btn.active { border-color: var(--green); color: var(--green); box-shadow: 0 0 10px rgba(76, 217, 100, 0.3); }
+
+        .right-instruments { display: flex; flex-direction: row; gap: 25px; align-items: center; }
+        .instrument-label { font-size: 0.7rem; color: #666; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;}
+        
+        .radar { 
+            width: 170px; height: 170px; border: 2px solid rgba(0, 242, 255, 0.4); border-radius: 50%; 
+            position: relative; overflow: hidden; background: radial-gradient(circle, #001a1a 0%, #000 70%);
+        }
+        .radar::before { 
+            content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; 
+            background: conic-gradient(from 0deg, rgba(0, 242, 255, 0.6) 0%, transparent 50%); 
+            animation: rotateRadar 3s linear infinite; 
+        }
+        @keyframes rotateRadar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .attitude-indicator { width: 170px; height: 170px; border-radius: 50%; border: 4px solid #555; position: relative; overflow: hidden; }
+        .attitude-sky { position: absolute; top: -10%; left: -10%; width: 120%; height: 120%; background: linear-gradient(to bottom, #0051a8 49%, #fff 50%, #4d2600 51%); animation: simulateAttitude 12s ease-in-out infinite alternate; }
+        @keyframes simulateAttitude { from { transform: rotate(5deg) translateY(-5%); } to { transform: rotate(-5deg) translateY(5%); } }
+        .airplane-symbol { position: absolute; top: 50%; left: 50%; width: 60px; height: 3px; background: #ffea00; transform: translate(-50%, -50%); z-index: 5; }
+
+        .time-overlay { position: absolute; top: 15px; font-size: 0.8rem; color: var(--gold); background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; border: 1px solid #333; }
+        .current-time-box { left: 20px; }
+        .start-time-box { right: 20px; }
+
+        .log-section { 
+            width: 100%; max-width: 1400px; background: #0c0e12; border: 3px solid var(--blue); padding: 25px; margin-bottom: 30px; border-radius: 12px; 
+            background-image: linear-gradient(rgba(0,122,255,0.05) 1px, transparent 1px); background-size: 100% 30px;
+        }
+        .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--blue); padding-bottom: 10px; }
+        .log-title { font-size: 1.4rem; color: var(--cyan); font-weight: bold; }
+        .log-input-area { display: flex; gap: 15px; margin-bottom: 15px; }
+        .log-input { flex-grow: 1; background: #000; border: 2px solid var(--blue); color: var(--cyan); padding: 15px; font-size: 1.1rem; outline: none; }
+        .log-display { height: 200px; overflow-y: auto; background: rgba(0,0,0,0.8); padding: 15px; border: 1px solid #1a1a1a; font-size: 1rem; color: #bbb; }
+        .log-entry { padding: 8px; border-bottom: 1px solid #222; display: flex; gap: 10px; align-items: center; }
+        .log-entry .ts { color: var(--gold); font-weight: bold; min-width: 100px; flex-shrink: 0; }
+        .log-entry-text { flex-grow: 1; background: transparent; border: 1px solid transparent; color: #fff; padding: 2px 5px; }
+        .btn-del-log { background: #400; color: #f99; border: 1px solid #600; cursor: pointer; padding: 2px 8px; font-size: 0.8rem; border-radius: 3px; }
+        .btn-pdf { padding: 12px 25px; background: var(--gold); color: #000; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; }
+
+        .cockpit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; width: 100%; max-width: 1400px; margin-bottom: 40px; }
+        .instrument-card { background: #161a1f; border: 2px solid #34495e; padding: 25px; text-align: center; border-radius: 10px; cursor: grab; }
+        .btn-execute { width: 100%; padding: 12px; background: transparent; border: 1px solid var(--blue); color: var(--blue); cursor: pointer; font-weight: bold; margin-top: 10px;}
+
+        .eng-bay { width: 100%; max-width: 1400px; background: #111; padding: 30px; border: 2px dashed #444; border-radius: 12px; margin-top: 40px; }
+
+        @media(max-width:768px){
+          body{padding:8px;overflow-x:hidden;}
+          .hud-column:first-child{display:none;}
+          .radar{display:none;}
+          .attitude-indicator{width:80px;height:80px;}
+          .hud-column{width:100%;align-items:center;}
+          .right-instruments{justify-content:center;}
+          #mission-timer{font-size:2rem;}
+          .switch-panel{flex-wrap:wrap;gap:6px;padding:8px;justify-content:center;}
+          .status-container{flex-wrap:wrap;gap:6px;justify-content:center;}
+          .log-section{padding:14px;width:100%;box-sizing:border-box;}
+          .log-input-area{flex-direction:column;gap:8px;}
+          .log-input{font-size:0.9rem;padding:10px;width:100%;box-sizing:border-box;}
+          .log-display{height:140px;font-size:0.82rem;}
+          .cockpit-grid{grid-template-columns:repeat(2,1fr);gap:10px;width:100%;box-sizing:border-box;}
+          .eng-bay{padding:14px;width:100%;box-sizing:border-box;}
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+
+    <div class="hud-container">
+        <div class="time-overlay current-time-box">ZULU TIME: <span id="real-time">00:00:00</span></div>
+        <div class="time-overlay start-time-box">MISSION START: <span id="start-time">--:--:--</span></div>
+
+        <div class="hud-column">
+            <div class="instrument-label">Tactical Mapping</div>
+            <div class="nav-monitor-placeholder">
+                <div id="nav-monitor" class="nav-monitor-box">
+                    <svg viewBox="0 0 310 190" class="nav-map-svg" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="310" height="190" fill="#000" />
+                        <path d="M20,40 L40,35 L60,45 L55,70 L30,65 Z M120,30 L150,25 L170,40 L160,80 L130,75 Z M80,100 L110,95 L120,120 L90,115 Z" fill="none" stroke="rgba(0,122,255,0.4)" stroke-width="1.5" />
+                        <path id="nav-track" d="M 40,70 " fill="none" stroke="var(--cyan)" stroke-width="2" />
+                        <circle id="nav-plane" cx="40" cy="70" r="4" fill="var(--red)" />
+                    </svg>
+                    <div style="position:absolute; bottom:5px; right:10px; font-size:0.6rem; color:var(--cyan); letter-spacing:1px;">ACTIVE TRACKING</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-column center-stack">
+            <div id="hud-date-wrapper">
+                <div id="hud-date">DATE</div>
+                <div id="hud-kw">KW --</div>
+            </div>
+            <div class="switch-panel">
+                <div class="switch-group"><div class="diode on-green" id="d-pwr"></div><div class="toggle-switch on" onclick="toggleSw(this,'d-pwr','on-green')"><div class="toggle-handle"></div></div><span style="font-size:0.5rem;">PWR</span></div>
+                <div class="switch-group"><div class="diode" id="d-cal"></div><div class="toggle-switch" onclick="toggleFeature('hud-date-wrapper', 'd-cal', this)"><div class="toggle-handle"></div></div><span style="font-size:0.5rem;">DATE</span></div>
+                <div class="switch-group"><div class="diode" id="d-focus"></div><div class="toggle-switch" onclick="toggleFocusMode('focus-input-container', 'd-focus', this)"><div class="toggle-handle"></div></div><span style="font-size:0.5rem;">FOCUS</span></div>
+                <div class="switch-group"><div class="diode" id="d-theme"></div><div class="toggle-switch" onclick="toggleBlueTheme('d-theme', this)"><div class="toggle-handle"></div></div><span style="font-size:0.5rem;">THEME</span></div>
+                <div class="switch-group"><div class="diode" id="d-nav"></div><div class="toggle-switch" onclick="toggleFeature('nav-monitor', 'd-nav', this)"><div class="toggle-handle"></div></div><span style="font-size:0.5rem;">MAP</span></div>
+            </div>
+            <div id="mission-timer">00:00:00</div>
+            
+            <div style="font-size: 0.6rem; color: #555; text-transform: uppercase;">Condition Monitor:</div>
+            <div class="status-container">
+                <button class="status-btn" onclick="logStatus('EXCELLENT', this)">Excellent</button>
+                <button class="status-btn" onclick="logStatus('STABLE', this)">Stable</button>
+                <button class="status-btn" onclick="logStatus('STRESSED', this)">Stressed</button>
+                <button class="status-btn" onclick="logStatus('RELAXED', this)">Relaxed</button>
+            </div>
+
+            <div id="focus-input-container" style="display:none; height:30px;">
+                <input type="text" id="focus-topic" placeholder="Target Focus..." style="background:#000; border:1px solid var(--blue); color:var(--cyan); padding:5px; font-family:inherit;" onkeypress="if(event.key==='Enter') logFocusStart()">
+            </div>
+        </div>
+
+        <div class="hud-column">
+            <div class="right-instruments">
+                <div style="text-align:center">
+                    <div class="instrument-label">Attitude</div>
+                    <div class="attitude-indicator"><div class="attitude-sky"></div><div class="airplane-symbol"></div></div>
+                </div>
+                <div style="text-align:center">
+                    <div class="instrument-label">Radar</div>
+                    <div class="radar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="log-section">
+        <div class="log-header">
+            <div class="log-title">✈ PILOT'S LOGBOOK</div>
+            <button onclick="exportLogPDF()" class="btn-pdf">📥 EXPORT REPORT</button>
+        </div>
+        <div class="log-input-area">
+            <input type="text" id="log-msg" class="log-input" placeholder="Neue Log-Eintrag..." onkeypress="if(event.key==='Enter') addLog()">
+            <button onclick="addLog()" style="padding:0 30px; background:var(--blue); color:white; border:none; cursor:pointer; font-weight:bold;">LOG</button>
+        </div>
+        <div class="log-display" id="log-display"></div>
+    </div>
+
+    <div class="cockpit-grid" id="grid"></div>
+
+    <div class="eng-bay">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color:var(--cyan); margin:0;">🛠 UNIT COMMANDER</h2>
+            <button class="btn-save" onclick="exportFullHTML()">💾 SAVE HTML</button>
+        </div>
+        <div id="editor-list"></div>
+        <button onclick="addNewUnit()" style="padding:10px 20px; cursor:pointer; margin-top:10px;">+ ADD UNIT</button>
+    </div>
+
+    <script id="data" type="application/json">
+    [
+        {"label": "PIM Export", "url": "V:\\Import\\proALPHA_Export_PIM_90min.csv", "icon": "📊"},
+        {"label": "ChatGPT AI", "url": "https://chatgpt.com", "icon": "🤖"},
+        {"label": "Network Drive V:", "url": "V:\\", "icon": "📂"}
+    ]
+    </script>
+
+    <script>
+        const STORAGE_KEY = 'AERO_DASH_V64';
+        let config = []; let logs = []; let missionStartTimestamp = null;
+        let lastSessionDate = ""; 
+        let currentFocusTopic = ""; let navPoints = "M 40,70 "; let navX = 40; let navY = 70;
+
+        window.onload = () => {
+            localStorage.removeItem(STORAGE_KEY);
+            loadAllStates();
+            checkDailyReset();
+            renderAll();
+            setInterval(updateRealTime, 1000); updateRealTime();
+            updateDateDisplay();
+            setInterval(updateMissionTimerLogic, 500);
+            setInterval(updateNavPath, 4000);
+            setInterval(autoHourlyBackup, 3600000); 
+            new Sortable(document.getElementById('grid'), { animation: 150 });
+        };
+
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function checkDailyReset() {
+            const today = new Date().toLocaleDateString();
+            if (lastSessionDate !== today) {
+                missionStartTimestamp = Date.now();
+                lastSessionDate = today;
+                addLog(`[SYSTEM] NEUER TAG: ${today}. Mission Timer zurückgesetzt.`);
+                saveLocal();
+            }
+        }
+
+        function updateRealTime() { document.getElementById('real-time').innerText = new Date().toLocaleTimeString(); }
+        
+        function updateDateDisplay() {
+            const days = ["SONNTAG", "MONTAG", "DIENSTAG", "MITTWOCH", "DONNERSTAG", "FREITAG", "SAMSTAG"];
+            const now = new Date(); 
+            document.getElementById('hud-date').innerText = `${days[now.getDay()]}, ${now.toLocaleDateString()}`;
+            document.getElementById('hud-kw').innerText = `KALENDERWOCHE: ${getWeekNumber(now)}`;
+        }
+
+        function toggleSw(el, diodeId, className) { el.classList.toggle('on'); document.getElementById(diodeId).classList.toggle(className); saveLocal(); }
+        
+        function toggleFeature(divId, diodeId, btn) {
+            const el = document.getElementById(divId);
+            const isOff = el.style.display === 'none' || el.style.display === '';
+            el.style.display = isOff ? 'block' : 'none';
+            btn.classList.toggle('on', isOff);
+            document.getElementById(diodeId).classList.toggle('on-blue', isOff);
+            saveLocal();
+        }
+
+        function toggleFocusMode(divId, diodeId, btn) {
+            const el = document.getElementById(divId);
+            if (el.style.display === 'block' && currentFocusTopic) { 
+                addLog(`[FOKUS] BEENDET: ${currentFocusTopic}`); 
+                currentFocusTopic = ""; 
+            }
+            toggleFeature(divId, diodeId, btn);
+        }
+
+        function logFocusStart() {
+            const input = document.getElementById('focus-topic');
+            currentFocusTopic = input.value.trim();
+            if(currentFocusTopic) {
+                addLog(`[FOKUS] START: ${currentFocusTopic}`);
+                saveLocal();
+            }
+        }
+
+        function toggleBlueTheme(diodeId, btn) {
+            const isBlue = document.body.classList.toggle('blue-theme');
+            btn.classList.toggle('on', isBlue); 
+            document.getElementById(diodeId).classList.toggle('on-blue', isBlue);
+            saveLocal();
+        }
+
+        function updateMissionTimerLogic() {
+            if(!missionStartTimestamp) return;
+            const totalSeconds = Math.floor((Date.now() - missionStartTimestamp) / 1000);
+            const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (totalSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('mission-timer').innerText = `${h}:${m}:${s}`;
+        }
+
+        function updateNavPath() {
+            navX += 3 + Math.random() * 2; navY += (Math.random() - 0.5) * 5;
+            if (navX > 300) { navX = 10; navPoints = `M ${navX},${navY} `; }
+            else { navPoints += `L ${navX},${navY} `; }
+            document.getElementById('nav-track').setAttribute('d', navPoints);
+            document.getElementById('nav-plane').setAttribute('cx', navX);
+            document.getElementById('nav-plane').setAttribute('cy', navY);
+        }
+
+        function logStatus(statusText, btn) {
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            addLog(`[STATUS UPDATE] Condition: ${statusText}`);
+            saveLocal();
+        }
+
+        function addLog(msg) {
+            const input = document.getElementById('log-msg'); const text = msg || input.value.trim();
+            if(!text) return;
+            logs.unshift({id: Date.now(), date: new Date().toLocaleDateString(), ts: new Date().toLocaleTimeString(), text: text});
+            updateLogDisplay(); 
+            if(!msg) input.value = '';
+            saveLocal();
+        }
+
+        function updateLogDisplay() {
+            document.getElementById('log-display').innerHTML = logs.map((l, i) => `
+                <div class="log-entry">
+                    <span class="ts">[${l.ts}]</span>
+                    <input type="text" class="log-entry-text" value="${l.text}" oninput="logs[${i}].text=this.value;saveLocal();">
+                    <button class="btn-del-log" onclick="logs.splice(${i},1);updateLogDisplay();saveLocal();">X</button>
+                </div>`).join('');
+        }
+
+        function exportLogPDF() {
+            const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            doc.text("FLIGHT DECK LOG - V64", 14, 20);
+            const tableData = logs.map(l => [l.date, l.ts, l.text]);
+            doc.autoTable({ startY: 30, head: [['Date', 'Time', 'Event']], body: tableData });
+            doc.save(`FlightLog_V64.pdf`);
+        }
+
+        function renderAll() { renderGrid(); renderEditor(); updateLogDisplay(); }
+        
+        function renderGrid() {
+            document.getElementById('grid').innerHTML = config.map((item, i) => `
+                <div class="instrument-card" data-index="${i}">
+                    <div style="font-size:3rem;">${item.icon}</div>
+                    <div style="font-weight:bold; color:var(--cyan); margin:10px 0;">${item.label}</div>
+                    <button class="btn-execute" onclick="window.open('${item.url}', '_blank')">ACTIVATE</button>
+                </div>`).join('');
+        }
+
+        function renderEditor() {
+            document.getElementById('editor-list').innerHTML = config.map((item, i) => `
+                <div class="eng-row" data-index="${i}">
+                    <input type="text" value="${item.icon}" style="width:40px" oninput="config[${i}].icon=this.value;saveLocal();renderGrid()">
+                    <input type="text" value="${item.label}" oninput="config[${i}].label=this.value;saveLocal();renderGrid()">
+                    <input type="text" value="${item.url}" style="flex-grow:1" oninput="config[${i}].url=this.value;saveLocal();renderGrid()">
+                    <button onclick="config.splice(${i},1);saveLocal();renderAll()">X</button>
+                </div>`).join('');
+        }
+
+        function addNewUnit() { config.push({label: "NEW UNIT", url: "https://", icon: "🛰️"}); saveLocal(); renderAll(); }
+        
+        function saveLocal() {
+            const state = {
+                config, logs, missionStartTimestamp, 
+                lastSessionDate, currentFocusTopic,
+                theme: document.body.classList.contains('blue-theme')
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadAllStates() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if(saved) {
+                const state = JSON.parse(saved);
+                config = state.config || [];
+                logs = state.logs || [];
+                missionStartTimestamp = state.missionStartTimestamp || Date.now();
+                lastSessionDate = state.lastSessionDate || "";
+                currentFocusTopic = state.currentFocusTopic || "";
+                if(state.theme) document.body.classList.add('blue-theme');
+            } else {
+                config = JSON.parse(document.getElementById('data').textContent);
+                missionStartTimestamp = Date.now();
+                lastSessionDate = new Date().toLocaleDateString();
+            }
+            document.getElementById('start-time').innerText = new Date(missionStartTimestamp).toLocaleTimeString();
+        }
+
+        function autoHourlyBackup() {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const backupName = `AeroDash_Backup_${dateStr}.html`;
+            const clone = document.documentElement.cloneNode(true);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], {type: 'text/html'}));
+            a.download = backupName;
+            a.click();
+            addLog(`[SYSTEM] Automatische Sicherung erstellt: ${backupName}`);
+        }
+
+        function exportFullHTML() {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const clone = document.documentElement.cloneNode(true);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], {type: 'text/html'}));
+            a.download = `AeroDash_Manual_${dateStr}.html`; 
+            a.click();
+        }
+    </script>
+</body>
+</html>

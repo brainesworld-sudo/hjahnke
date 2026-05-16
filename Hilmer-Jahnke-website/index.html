@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hilmer Jahnke – KI-Berater</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#0f0f0f;
+  --ink2:#555;
+  --ink3:#aaa;
+  --rule:#e8e8e8;
+  --fs:'DM Sans',system-ui,sans-serif;
+  --ff:'DM Serif Display',Georgia,serif;
+}
+html{scroll-behavior:smooth;}
+body{font-family:var(--fs);background:#fff;color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased;cursor:none;}
+a,button,.nav-cta{pointer-events:auto;}
+
+/* CURSOR */
+#cd{position:fixed;z-index:9999;pointer-events:none;width:7px;height:7px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%);}
+#cr{position:fixed;z-index:9998;pointer-events:none;width:34px;height:34px;border-radius:50%;border:1px solid rgba(15,15,15,.2);transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s;}
+body.lh #cd{width:14px;height:14px;background:rgba(15,15,15,.15);}
+body.lh #cr{width:60px;height:60px;border-color:rgba(15,15,15,.08);}
+@media(max-width:768px){#cd,#cr{display:none;}body{cursor:auto;}.hero-lines,.hero-num{display:none;}}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:9000;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 44px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--rule);}
+.nav-logo{font-family:var(--ff);font-size:17px;color:var(--ink);text-decoration:none;}
+.nav-r{display:flex;align-items:center;gap:36px;}
+.nav-links{display:flex;gap:28px;list-style:none;}
+.nav-links a{font-size:13px;color:var(--ink2);text-decoration:none;transition:color .2s;}
+.nav-links a:hover{color:var(--ink);}
+.nav-cta{font-size:12px;font-weight:500;background:var(--ink);color:#fff;padding:8px 18px;border-radius:980px;text-decoration:none;transition:transform .2s,opacity .2s;position:relative;z-index:9001;}
+.nav-cta:hover{transform:scale(1.05);opacity:.85;}
+
+/* JET LAYER — inside hero only, clips with hero overflow:hidden */
+#jet-wrap{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden;}
+#jet-canvas{position:absolute;inset:0;width:100%;height:100%;}
+
+/* HERO */
+.hero{min-height:100vh;background:#fff;position:relative;overflow:hidden;display:grid;grid-template-rows:auto 1fr auto;padding:0 44px;}
+
+/* Background grid lines */
+.hero-lines{position:absolute;inset:0;pointer-events:none;z-index:0;}
+.hero-lines::before{content:'';position:absolute;left:33.33%;top:0;bottom:0;width:1px;background:var(--rule);opacity:.5;}
+.hero-lines::after{content:'';position:absolute;left:66.66%;top:0;bottom:0;width:1px;background:var(--rule);opacity:.5;}
+
+/* Ghost KI number */
+.hero-num{position:absolute;top:50%;right:44px;transform:translateY(-50%);font-family:var(--ff);font-size:clamp(200px,28vw,400px);line-height:1;letter-spacing:-.05em;color:transparent;-webkit-text-stroke:1px rgba(0,0,0,.04);pointer-events:none;user-select:none;z-index:0;animation:numDrift 12s ease-in-out infinite;}
+@keyframes numDrift{0%,100%{transform:translateY(-50%)}50%{transform:translateY(-52%) translateX(-10px)}}
+
+/* Marquee */
+.marquee-wrap{position:relative;z-index:2;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);overflow:hidden;white-space:nowrap;padding:10px 0;margin-top:54px;opacity:0;animation:fadeIn .5s ease .1s forwards;}
+.marquee-track{display:inline-flex;animation:marquee 20s linear infinite;}
+.marquee-item{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);padding:0 32px;border-right:1px solid var(--rule);white-space:nowrap;}
+.marquee-item span{color:var(--ink);margin-right:6px;}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* Hero center */
+.hero-center{display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2;padding:40px 0;}
+.hero-split{display:grid;grid-template-columns:1fr 360px;gap:0;align-items:flex-end;}
+.hero-label{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:28px;display:flex;align-items:center;gap:8px;opacity:0;animation:fadeUp .6s ease .2s forwards;}
+.hero-label::before{content:'';width:24px;height:1px;background:var(--ink3);}
+
+/* HEADLINE LETTERS */
+.hero-h1{font-family:var(--ff);font-size:clamp(64px,10vw,140px);line-height:.93;letter-spacing:-.04em;color:var(--ink);}
+.hero-h1 .line2{display:block;font-style:italic;color:var(--ink3);transform:translateX(60px);}
+.letter{display:inline-block;opacity:0;}
+.letter.snap{animation:letterSnap .5s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes letterSnap{from{opacity:0;transform:var(--lf);}to{opacity:1;transform:translate(0,0) rotate(0deg);}}
+
+/* Worker dots */
+.worker{position:fixed;width:6px;height:6px;border-radius:50%;background:var(--ink);pointer-events:none;z-index:9990;opacity:0;}
+
+/* Right col */
+.hero-right-col{display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:4px;padding-left:24px;opacity:0;animation:fadeUp .7s ease 2.4s forwards;}
+.hero-sub{font-size:15px;font-weight:300;color:var(--ink2);line-height:1.75;margin-bottom:32px;border-left:2px solid var(--rule);padding-left:18px;}
+.hero-btns{display:flex;flex-direction:column;gap:10px;}
+.hero-ai{display:flex;align-items:center;gap:8px;margin-bottom:28px;}
+.ai-lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);}
+.ai-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink2);background:#f5f5f5;border:1px solid var(--rule);border-radius:980px;padding:4px 11px;transition:background .2s;}
+.ai-tag:hover{background:#ebebeb;}
+.ai-dot{width:5px;height:5px;border-radius:50%;}
+
+/* Buttons */
+.btn-main{display:flex;align-items:center;justify-content:center;background:var(--ink);color:#fff;padding:14px 28px;border-radius:980px;font-size:13px;font-weight:500;text-decoration:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;box-shadow:0 4px 20px rgba(0,0,0,.12);}
+.btn-main:hover{transform:scale(1.04);box-shadow:0 10px 30px rgba(0,0,0,.18);}
+.btn-ghost{display:flex;align-items:center;justify-content:center;background:transparent;color:var(--ink2);padding:14px 28px;border-radius:980px;font-size:13px;font-weight:500;text-decoration:none;border:1px solid var(--rule);transition:background .2s,color .2s;}
+.btn-ghost:hover{background:#f5f5f5;color:var(--ink);}
+
+/* Bottom bar */
+.hero-bottom-bar{position:relative;z-index:2;border-top:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;padding:14px 0;opacity:0;animation:fadeIn .6s ease 2.6s forwards;}
+.hero-tw{display:flex;align-items:center;gap:10px;}
+.tw-label{font-size:11px;color:var(--ink3);}
+#tw{font-size:12px;font-weight:500;color:var(--ink);}
+.cur{display:inline-block;width:1.5px;height:12px;background:var(--ink);margin-left:2px;vertical-align:middle;animation:blink 1s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.hero-loc{font-size:11px;color:var(--ink3);}
+#ltime{color:var(--ink2);font-weight:500;}
+
+/* CLICK BURST */
+.burst-ring{position:fixed;border-radius:50%;border:1.5px solid rgba(15,15,15,.35);pointer-events:none;z-index:9995;transform:translate(-50%,-50%) scale(0);animation:bRing .6s cubic-bezier(.16,1,.3,1) forwards;}
+@keyframes bRing{from{transform:translate(-50%,-50%) scale(0);opacity:1;}to{transform:translate(-50%,-50%) scale(1);opacity:0;}}
+.burst-dot{position:fixed;width:5px;height:5px;border-radius:50%;background:var(--ink);pointer-events:none;z-index:9995;animation:bDot .5s cubic-bezier(.16,1,.3,1) forwards;}
+@keyframes bDot{from{opacity:1;transform:translate(-50%,-50%);}to{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy)));}}
+.burst-word{position:fixed;font-size:11px;font-weight:500;color:var(--ink);pointer-events:none;z-index:9995;white-space:nowrap;transform:translate(-50%,-50%);animation:bWord .8s ease forwards;}
+@keyframes bWord{0%{opacity:0;transform:translate(-50%,-60%);}30%{opacity:1;transform:translate(-50%,-75%);}100%{opacity:0;transform:translate(-50%,-95%);}}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1);}
+.reveal.v{opacity:1;transform:none;}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}
+
+/* SECTIONS */
+section:not(.hero){padding:100px 44px;}
+.container{max-width:1080px;margin:0 auto;}
+hr.rule{border:none;border-top:1px solid var(--rule);}
+.s-label{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:14px;}
+.s-title{font-family:var(--ff);font-size:clamp(36px,5vw,62px);line-height:1.04;letter-spacing:-.025em;color:var(--ink);}
+.s-sub{font-size:16px;font-weight:300;color:var(--ink2);line-height:1.72;max-width:440px;}
+
+/* MAX WIDTH CONSTRAINT — content never stretches beyond 1440px */
+body{max-width:1440px;margin:0 auto;position:relative;}
+nav{max-width:1440px;left:50%;transform:translateX(-50%);}
+#contact-overlay .co-inner{max-width:660px;}
+.hero{max-width:100%;}
+.hero-h1{font-size:clamp(64px,8vw,120px);}
+.hero-split{grid-template-columns:1fr 380px;}
+
+/* Section padding scales with screen */
+@media(min-width:1200px){
+  section:not(.hero){padding:120px clamp(44px,5vw,120px);}
+  .tools-section{padding:120px clamp(44px,5vw,120px);}
+  nav{padding:0 clamp(44px,5vw,120px);}
+  .hero{padding:0 clamp(44px,5vw,120px);}
+}
+
+/* ABOUT */
+.about-header{display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:end;padding-bottom:56px;border-bottom:1px solid var(--rule);margin-bottom:56px;}
+.about-header-left{padding-right:64px;border-right:1px solid var(--rule);}
+.about-header-right{padding-left:64px;}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.about-left{padding-right:64px;border-right:1px solid var(--rule);}
+.about-right{padding-left:64px;}
+.about-text p{font-size:17px;font-weight:300;color:var(--ink2);line-height:1.8;margin-bottom:16px;}
+.about-text p strong{color:var(--ink);font-weight:500;}
+.about-text p:last-child{margin-bottom:0;}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:18px;overflow:hidden;}
+.stat{background:#fff;padding:28px 24px;}
+.stat-n{font-family:var(--ff);font-size:48px;color:var(--ink);line-height:1;}
+.stat-l{font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.4;}
+
+/* TOOLS */
+.tools-section{background:#f9f9f9;padding:100px 44px;}
+.tools-intro{display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:end;margin-bottom:52px;padding-bottom:40px;border-bottom:1px solid var(--rule);}
+.tools-intro-right{padding-left:64px;border-left:1px solid var(--rule);}
+.tools-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:20px;overflow:hidden;}
+.tool{background:#fff;padding:32px 28px;text-decoration:none;color:inherit;display:block;position:relative;overflow:hidden;transition:background .2s;}
+.tool:hover{background:#f5f5f5;}
+.tool.feat{background:var(--ink);color:#fff;}
+.tool.feat .tool-d{color:rgba(255,255,255,.5);}
+.tool.feat .tool-c{background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);}
+.tool.feat .ta{color:rgba(255,255,255,.15);}
+.tool.feat:hover{background:#1a1a1a;}
+.tool.feat:hover .ta{color:rgba(255,255,255,.7);}
+.ti{font-size:26px;display:block;margin-bottom:18px;}
+.tn{font-size:16px;font-weight:500;letter-spacing:-.01em;margin-bottom:8px;}
+.tool-d{font-size:13px;font-weight:300;color:var(--ink2);line-height:1.65;margin-bottom:16px;}
+.tool-c{font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;background:#f0f0f0;color:var(--ink3);padding:3px 10px;border-radius:980px;display:inline-block;}
+.ta{position:absolute;top:26px;right:26px;font-size:18px;color:var(--rule);transition:color .2s,transform .2s;}
+.tool:hover .ta{color:var(--ink2);transform:translate(3px,-3px);}
+
+/* APPROACH */
+.ap-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:24px;overflow:hidden;margin-top:52px;}
+.ap{background:#fff;padding:48px 36px;}
+.ap-n{font-family:var(--ff);font-size:56px;color:#eee;line-height:1;margin-bottom:20px;}
+.ap-t{font-size:17px;font-weight:500;margin-bottom:12px;}
+.ap-b{font-size:14px;font-weight:300;color:var(--ink2);line-height:1.75;}
+
+/* CTA */
+.cta-s{background:var(--ink);text-align:left;padding:120px 44px;}
+.cta-s .s-title{color:#fff;margin-bottom:18px;}
+.cta-s .s-sub{color:rgba(255,255,255,.38);margin:0 0 44px;}
+.cta-s .btn-main{background:#fff;color:var(--ink);display:inline-flex;width:auto;}
+
+/* CONTACT OVERLAY */
+#contact-overlay{
+  display:none;position:fixed;inset:0;z-index:8000;
+  background:rgba(10,10,10,0.97);
+  overflow-y:auto;
+  opacity:0;transition:opacity .35s ease;
+}
+#contact-overlay.open{display:block;}
+#contact-overlay.visible{opacity:1;}
+.co-inner{max-width:660px;margin:0 auto;padding:80px 24px 80px;position:relative;}
+.co-close{position:absolute;top:24px;right:0;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.35);font-size:32px;line-height:1;padding:4px 8px;transition:color .2s;}
+.co-close:hover{color:#fff;}
+.co-label{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px;}
+.co-title{font-family:var(--ff);font-size:clamp(30px,5vw,52px);line-height:1.06;letter-spacing:-.025em;color:#fff;margin-bottom:12px;}
+.co-sub{font-size:15px;font-weight:300;color:rgba(255,255,255,.4);margin-bottom:44px;line-height:1.7;}
+.cf-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.cf-field{display:flex;flex-direction:column;gap:8px;}
+.cf-label{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);}
+.cf-input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px 18px;font-family:var(--fs);font-size:14px;font-weight:300;color:#fff;outline:none;transition:border-color .2s,background .2s;resize:none;width:100%;}
+.cf-input::placeholder{color:rgba(255,255,255,.25);}
+.cf-input:focus{border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.09);}
+.cf-textarea{line-height:1.7;min-height:150px;}
+.cf-actions{margin-top:28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.cf-submit{font-size:14px;padding:15px 32px;cursor:pointer;border:none;}
+#cf-status{font-size:13px;color:rgba(255,255,255,.5);}
+@media(max-width:768px){.cf-row{grid-template-columns:1fr;}}
+
+/* FOOTER */
+footer{background:#0f0f0f;padding:32px 44px;display:flex;align-items:center;justify-content:space-between;}
+.fl{font-family:var(--ff);font-size:15px;color:#fff;}
+.fn{font-size:12px;color:#555;}
+
+/* MOBILE */
+@media(max-width:768px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  .nav-cta{font-size:11px;padding:7px 14px;}
+  .hero{padding:0 20px;}
+  .hero-split{grid-template-columns:1fr;}
+  .hero-right-col{padding-left:0;padding-top:28px;animation:fadeUp .7s ease .6s both;}
+  .hero-num{display:none;}
+  #jet-wrap{display:none;} /* no orb animation on mobile */
+  section:not(.hero){padding:64px 20px;}
+  .about-header,.about-grid{grid-template-columns:1fr;}
+  .about-header-left{padding-right:0;border-right:none;border-bottom:1px solid var(--rule);padding-bottom:32px;margin-bottom:32px;}
+  .about-header-right,.about-right{padding-left:0;}
+  .about-left{padding-right:0;border-right:none;border-bottom:1px solid var(--rule);padding-bottom:36px;margin-bottom:36px;}
+  .tools-section{padding:64px 20px;}
+  .tools-intro{grid-template-columns:1fr;}
+  .tools-intro-right{padding-left:0;border-left:none;padding-top:20px;}
+  .tools-grid{grid-template-columns:1fr;}
+  .tool.feat{grid-column:span 1;}
+  /* Mobile hint on each tool card */
+  .tool::after{
+    content:'→ Bitte auf dem Desktop ausprobieren';
+    display:block;
+    font-size:10px;
+    color:var(--ink3);
+    margin-top:10px;
+    font-style:italic;
+    letter-spacing:.02em;
+  }
+  .tool.feat::after{
+    color:rgba(255,255,255,.35);
+  }
+  .ap-grid{grid-template-columns:1fr;}
+  /* CTA section — white text on dark bg, already correct */
+  .cta-s{padding:80px 20px;}
+  .cta-s .s-title{color:#fff;}
+  .cta-s .s-sub{color:rgba(255,255,255,.55);}
+  /* Footer — dark bg, ensure white text */
+  footer{padding:24px 20px;flex-direction:column;gap:10px;text-align:center;background:#0f0f0f;}
+  .fl{color:#fff;}
+  .fn{color:#888;}
+}
+</style>
+</head>
+<body>
+
+<div id="cd"></div>
+<div id="cr"></div>
+
+<!-- JET LAYER - pointer-events none so it never blocks clicks -->
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">Hilmer Jahnke</a>
+  <div class="nav-r">
+    <ul class="nav-links">
+      <li><a href="javascript:void(0)" data-scroll="#about">Über mich</a></li>
+      <li><a href="javascript:void(0)" data-scroll="#tools">Tools</a></li>
+      <li><a href="javascript:void(0)" data-scroll="#approach">Ansatz</a></li>
+    </ul>
+    <a href="javascript:void(0)" onclick="openContact()" class="nav-cta">Gespräch anfragen</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <!-- Plane canvas lives inside hero — clips automatically on scroll -->
+  <div id="jet-wrap">
+    <canvas id="jet-canvas"></canvas>
+  </div>
+  <div class="hero-lines"></div>
+  <div class="hero-num">KI</div>
+
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <div class="marquee-item"><span>Product Manager</span>KI-Berater</div>
+      <div class="marquee-item"><span>Tool-Builder</span>ChatGPT · Claude · Gemini</div>
+      <div class="marquee-item"><span>Hannover</span>Deutschland</div>
+      <div class="marquee-item"><span>KI-Einführung</span>Change Management</div>
+      <div class="marquee-item"><span>Product Manager</span>KI-Berater</div>
+      <div class="marquee-item"><span>Tool-Builder</span>ChatGPT · Claude · Gemini</div>
+      <div class="marquee-item"><span>Hannover</span>Deutschland</div>
+      <div class="marquee-item"><span>KI-Einführung</span>Change Management</div>
+    </div>
+  </div>
+
+  <div class="hero-center">
+    <div class="hero-split">
+      <div class="hero-left">
+        <div class="hero-label">KI-Berater & Product Manager</div>
+        <h1 class="hero-h1" aria-label="Hilmer Jahnke">
+          <span id="row1"></span><br>
+          <span class="line2" id="row2"></span>
+        </h1>
+      </div>
+      <div class="hero-right-col">
+        <div class="hero-ai">
+          <span class="ai-lbl">Gebaut mit</span>
+          <span class="ai-tag"><span class="ai-dot" style="background:#10a37f"></span>ChatGPT</span>
+          <span class="ai-tag"><span class="ai-dot" style="background:#9e8fbc"></span>Claude</span>
+          <span class="ai-tag"><span class="ai-dot" style="background:#4285f4"></span>Gemini</span>
+        </div>
+        <p class="hero-sub">Ich helfe Unternehmen, KI sinnvoll einzuführen – strategisch, menschlich, messbar. Und ich baue Tools, die zeigen, was möglich ist.</p>
+        <div class="hero-btns">
+          <a href="javascript:void(0)" onclick="smoothScrollTo(document.getElementById('tools').getBoundingClientRect().top+window.scrollY-54,900)" class="btn-main">Tools entdecken</a>
+          <a href="javascript:void(0)" onclick="openContact()" class="btn-ghost">Gespräch anfragen</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-bottom-bar">
+    <div class="hero-tw">
+      <span class="tw-label">Ich bin </span>
+      <span id="tw"></span><span class="cur"></span>
+    </div>
+    <div class="hero-loc">Hannover &nbsp;·&nbsp; <span id="ltime">--:--</span></div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="container">
+    <div class="about-header">
+      <div class="about-header-left">
+        <p class="s-label reveal">Über mich</p>
+        <h2 class="s-title reveal d1">Product Manager.<br>KI-Enthusiast.<br>Gestalter.</h2>
+      </div>
+      <div class="about-header-right reveal d2">
+        <div class="stats-row">
+          <div class="stat"><div class="stat-n">7+</div><div class="stat-l">Jahre als Product Manager</div></div>
+          <div class="stat"><div class="stat-n">7</div><div class="stat-l">Tools gebaut</div></div>
+          <div class="stat"><div class="stat-n">5</div><div class="stat-l">KI-Kurse in 2026</div></div>
+          <div class="stat"><div class="stat-n">∞</div><div class="stat-l">Neugierde</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="about-grid">
+      <div class="about-left about-text reveal">
+        <p>Als <strong>Product Manager</strong> mit jahrelanger Erfahrung werde ich immer wieder nach kreativen Lösungen gefragt – und meine Affinität zur KI-Welt hilft mir dabei enorm. Ob im Team, im Prozess oder beim Bauen eigener Tools: KI ist für mich kein Buzzword, sondern ein echtes Handwerkszeug.</p>
+        <p>Ich glaube, dass KI dann am wirkungsvollsten ist, wenn sie <strong>Menschen verstärkt, nicht ersetzt</strong>.</p>
+      </div>
+      <div class="about-right about-text reveal d1">
+        <p>Mein Fokus: Unternehmen helfen, die richtigen Werkzeuge für ihre Prozesse zu finden – und sie nachhaltig einzuführen.</p>
+        <p>Diese Tools habe ich alle selbst mit Hilfe von KI gebaut. Sie zeigen, was möglich ist – und wie ich denke.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- TOOLS -->
+<section id="tools" class="tools-section">
+  <div class="container">
+    <div class="tools-intro">
+      <div>
+        <p class="s-label reveal">Mit KI gebaut</p>
+        <h2 class="s-title reveal d1">Tools, die<br>funktionieren.</h2>
+      </div>
+      <div class="tools-intro-right reveal d2">
+        <p class="s-sub">Entstanden mit ChatGPT, Claude und Gemini – von der Idee bis zur fertigen Anwendung. Jedes Tool löst ein echtes Problem.</p>
+      </div>
+    </div>
+    <div class="tools-grid">
+      <a href="cockpit.html" class="tool feat reveal" onclick="window.open('cockpit.html');return false;">
+        <span class="ta">↗</span>
+        <span class="ti">✈️</span>
+        <div class="tn">Cockpit – Tageslogbuch</div>
+        <div class="tool-d">Du sitzt im Cockpit, Geräte um dich herum. Schreib ins Logbuch, was passiert – spielerisch, aber mit echtem Datenwert.</div>
+        <span class="tool-c">Productivity</span>
+      </a>
+      <a href="audit.html" class="tool reveal d1">
+        <span class="ta">↗</span><span class="ti">🔍</span>
+        <div class="tn">Audit-Tool</div>
+        <div class="tool-d">Strukturierte Prüfprozesse, dokumentiert und nachvollziehbar.</div>
+        <span class="tool-c">Business</span>
+      </a>
+      <a href="protokoll.html" class="tool reveal">
+        <span class="ta">↗</span><span class="ti">📝</span>
+        <div class="tn">Meeting-Protokoll</div>
+        <div class="tool-d">Professionelle Protokolle, als PDF und Excel exportierbar.</div>
+        <span class="tool-c">Business</span>
+      </a>
+      <a href="mindflow.html" class="tool reveal d1" onclick="window.open('mindflow.html');return false;">
+        <span class="ta">↗</span>
+        <span class="ti" style="font-size:22px;opacity:.8">🧠</span>
+        <div class="tn">Mindflow – Mindmaps</div>
+        <div class="tool-d">Mindmaps im Apple-Stil. Gedanken strukturieren, Zusammenhänge sichtbar machen.</div>
+        <span class="tool-c">Productivity</span>
+      </a>
+      <a href="bildkomprimierung.html" class="tool reveal d2">
+        <span class="ta">↗</span><span class="ti">🏞</span>
+        <div class="tn">Bild-Komprimierer</div>
+        <div class="tool-d">Bilder verkleinern ohne Qualitätsverlust – direkt im Browser.</div>
+        <span class="tool-c">Utility</span>
+      </a>
+      <a href="pdfkomprimierung.html" class="tool reveal d3">
+        <span class="ta">↗</span><span class="ti">📄</span>
+        <div class="tn">PDF-Komprimierer</div>
+        <div class="tool-d">PDFs verkleinern für Uploads, E-Mails und Archivierung.</div>
+        <span class="tool-c">Utility</span>
+      </a>
+      <a href="ean.html" class="tool reveal d1">
+        <span class="ta">↗</span><span class="ti">📦</span>
+        <div class="tn">EAN-Generator</div>
+        <div class="tool-d">Barcodes generieren – schnell, kostenlos, ohne Account.</div>
+        <span class="tool-c">Utility</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- APPROACH -->
+<section id="approach">
+  <div class="container">
+    <p class="s-label reveal">Mein Ansatz</p>
+    <h2 class="s-title reveal d1">Strategie trifft Praxis.</h2>
+    <div class="ap-grid">
+      <div class="ap reveal">
+        <div class="ap-n">01</div>
+        <div class="ap-t">Verstehen</div>
+        <div class="ap-b">Bevor ein Tool gebaut oder eine KI eingeführt wird, verstehe ich den Prozess dahinter – was Menschen brauchen, nicht was Technologie kann.</div>
+      </div>
+      <div class="ap reveal d1">
+        <div class="ap-n">02</div>
+        <div class="ap-t">Gestalten</div>
+        <div class="ap-b">KI-Einführung ist Change Management. Ich helfe Organisationen, den Wandel so zu gestalten, dass Menschen ihn mittragen – nicht erleiden.</div>
+      </div>
+      <div class="ap reveal d2">
+        <div class="ap-n">03</div>
+        <div class="ap-t">Umsetzen</div>
+        <div class="ap-b">Ich baue selbst. Das bedeutet: Ich weiß, was machbar ist, wo Grenzen liegen – und wie man trotzdem das Beste herausholt.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT OVERLAY — not in scroll flow, triggered by button only -->
+<div id="contact-overlay">
+  <div class="co-inner">
+    <button class="co-close" onclick="closeContact()">×</button>
+    <p class="co-label">Kontakt</p>
+    <h2 class="co-title">Bereit, KI sinnvoll<br>einzusetzen?</h2>
+    <p class="co-sub">Füll das Formular aus – ich melde mich.</p>
+    <form id="contact-form" onsubmit="sendMail(event)">
+      <div class="cf-row">
+        <div class="cf-field">
+          <label class="cf-label">Name</label>
+          <input class="cf-input" type="text" id="cf-name" placeholder="Dein Name" required>
+        </div>
+        <div class="cf-field">
+          <label class="cf-label">E-Mail</label>
+          <input class="cf-input" type="email" id="cf-email" placeholder="deine@mail.de" required>
+        </div>
+      </div>
+      <div class="cf-field" style="margin-top:16px;">
+        <label class="cf-label">Unternehmen <span style="opacity:.5">(optional)</span></label>
+        <input class="cf-input" type="text" id="cf-company" placeholder="Dein Unternehmen">
+      </div>
+      <div class="cf-field" style="margin-top:16px;">
+        <label class="cf-label">Nachricht</label>
+        <textarea class="cf-input cf-textarea" id="cf-message" rows="6" required>Hallo Hilmer,
+
+ich interessiere mich für ein Gespräch zum Thema KI-Einführung in meinem Unternehmen. Gerne würde ich mehr über deine Beratungsleistungen erfahren.
+
+Mit freundlichen Grüßen</textarea>
+      </div>
+      <div class="cf-actions">
+        <button type="submit" class="btn-main cf-submit">Nachricht senden</button>
+        <span id="cf-status"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer>
+  <div class="fl">Hilmer Jahnke</div>
+  <div class="fn">Gebaut mit ChatGPT, Claude & Gemini · 2025</div>
+</footer>
+
+<script>
+// ── CURSOR ──
+const cd=document.getElementById('cd'),cr=document.getElementById('cr');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+document.querySelectorAll('a,button').forEach(el=>{
+  el.addEventListener('mouseenter',()=>document.body.classList.add('lh'));
+  el.addEventListener('mouseleave',()=>document.body.classList.remove('lh'));
+});
+(function loop(){
+  cd.style.left=mx+'px';cd.style.top=my+'px';
+  rx+=(mx-rx)*.1;ry+=(my-ry)*.1;
+  cr.style.left=rx+'px';cr.style.top=ry+'px';
+  requestAnimationFrame(loop);
+})();
+
+// ── CLOCK ──
+function tick(){
+  const n=new Date(),el=document.getElementById('ltime');
+  if(el)el.textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+}
+tick();setInterval(tick,15000);
+
+// ── LETTER ASSEMBLY ──
+(function(){
+  const dirs=[
+    'translate(-140px,-80px) rotate(-15deg)','translate(90px,-110px) rotate(13deg)',
+    'translate(-70px,130px) rotate(-9deg)','translate(150px,70px) rotate(21deg)',
+    'translate(-100px,-50px) rotate(-23deg)','translate(65px,150px) rotate(11deg)',
+    'translate(-150px,40px) rotate(-13deg)','translate(110px,-90px) rotate(19deg)',
+    'translate(-40px,-140px) rotate(-7deg)','translate(130px,100px) rotate(-17deg)',
+    'translate(-120px,80px) rotate(15deg)','translate(55px,-120px) rotate(-21deg)',
+    'translate(-80px,110px) rotate(9deg)',
+  ];
+  const r1=document.getElementById('row1');
+  const r2=document.getElementById('row2');
+  const words=[{el:r1,txt:'Hilmer'},{el:r2,txt:'Jahnke.'}];
+  let all=[];
+  words.forEach(w=>{
+    [...w.txt].forEach(ch=>{
+      const s=document.createElement('span');
+      s.className='letter';
+      s.textContent=ch===' '?'\u00a0':ch;
+      s.style.setProperty('--lf',dirs[all.length%dirs.length]);
+      w.el.appendChild(s);
+      all.push(s);
+    });
+  });
+
+  function spawnWorker(target,delay,cb){
+    const w=document.createElement('div');
+    w.className='worker';
+    document.body.appendChild(w);
+    setTimeout(()=>{
+      w.style.opacity='1';
+      const sx=Math.random()*window.innerWidth;
+      const sy=80+Math.random()*window.innerHeight*.5;
+      w.style.left=sx+'px';w.style.top=sy+'px';
+      const rect=target.getBoundingClientRect();
+      const tx=rect.left+rect.width/2,ty=rect.top+rect.height/2;
+      const dur=280+Math.random()*180;
+      w.style.transition=`left ${dur}ms cubic-bezier(.4,0,.2,1),top ${dur}ms cubic-bezier(.4,0,.2,1)`;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        w.style.left=tx+'px';w.style.top=ty+'px';
+      }));
+      setTimeout(()=>{
+        w.style.opacity='0';
+        setTimeout(()=>w.remove(),200);
+        cb&&cb();
+      },dur+40);
+    },delay);
+  }
+
+  let base=350;
+  all.forEach((s,i)=>{
+    spawnWorker(s,base+i*110,()=>s.classList.add('snap'));
+    base+=15;
+  });
+})();
+
+// ── TYPEWRITER ──
+const roles=['Tool-Builder.','KI-Berater.','Problemlöser.','Product Manager.','Gestalter.'];
+let wi=0,ci=0,del=false;
+const tel=document.getElementById('tw');
+function type(){
+  const w=roles[wi];
+  if(!del){tel.textContent=w.slice(0,++ci);if(ci===w.length){del=true;setTimeout(type,2000);return;}}
+  else{tel.textContent=w.slice(0,--ci);if(ci===0){del=false;wi=(wi+1)%roles.length;}}
+  setTimeout(type,del?48:80);
+}
+setTimeout(type,800);
+
+// ── CLICK BURST ──
+const bWords=['✦ Hallo!','🚀 Los!','💡 Idee?','🎯 Genau!','⚡ Zap!','✨ Magic','🔥 Nice','🛠 Built!','🤖 KI!','💫 Wow','🧠 Denk!','🌟 Super'];
+let bc=0;
+document.addEventListener('click',e=>{
+  if(e.target.closest('a,button')) return;
+  const x=e.clientX,y=e.clientY;
+  [44,76,108].forEach((sz,i)=>{
+    const r=document.createElement('div');
+    r.className='burst-ring';
+    r.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;animation-delay:${i*70}ms;`;
+    document.body.appendChild(r);
+    setTimeout(()=>r.remove(),700+i*70);
+  });
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2,d=35+Math.random()*25;
+    const dot=document.createElement('div');
+    dot.className='burst-dot';
+    dot.style.cssText=`left:${x}px;top:${y}px;--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;animation-delay:${Math.random()*50}ms;`;
+    document.body.appendChild(dot);
+    setTimeout(()=>dot.remove(),600);
+  }
+  const wrd=document.createElement('div');
+  wrd.className='burst-word';
+  wrd.textContent=bWords[bc++%bWords.length];
+  wrd.style.cssText=`left:${x}px;top:${y}px;`;
+  document.body.appendChild(wrd);
+  setTimeout(()=>wrd.remove(),900);
+});
+
+// ── ANIMATION 1: ORBS WITH CONTRAIL — hero only, desktop only ──
+(function(){
+  if(window.innerWidth<769)return;
+  const canvas=document.getElementById('jet-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const hero=document.getElementById('home');
+  let W,H;
+  function resize(){W=canvas.width=hero.offsetWidth;H=canvas.height=hero.offsetHeight;}
+  resize();window.addEventListener('resize',resize);
+  let active=false,dir=1;
+
+  function drawContrail(trail,globalA){
+    if(trail.length<2)return;
+    const ga=globalA||1;
+    const passes=[
+      {wm:44,a:0.036,c:'215,215,215'},
+      {wm:25,a:0.062,c:'195,195,195'},
+      {wm:11,a:0.088,c:'175,175,175'},
+    ];
+    passes.forEach(p=>{
+      for(let i=1;i<trail.length;i++){
+        const a=trail[i-1],b=trail[i],ratio=i/trail.length;
+        const alpha=(1-a.age)*p.a*ratio*ga;
+        if(alpha<0.002)continue;
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle='rgba('+p.c+','+alpha+')';
+        ctx.lineWidth=Math.max(1,ratio*p.wm);
+        ctx.lineCap='round';ctx.stroke();
+      }
+    });
+  }
+
+  function drawOrb(px,py){
+    const r=7;
+    const halo=ctx.createRadialGradient(px,py,r*0.8,px,py,r*2.6);
+    halo.addColorStop(0,'rgba(30,30,30,0.14)');halo.addColorStop(1,'rgba(30,30,30,0)');
+    ctx.beginPath();ctx.arc(px,py,r*2.6,0,Math.PI*2);ctx.fillStyle=halo;ctx.fill();
+    const grd=ctx.createRadialGradient(px-r*0.35,py-r*0.35,r*0.05,px,py,r);
+    grd.addColorStop(0,'#505050');grd.addColorStop(0.5,'#1a1a1a');grd.addColorStop(1,'#060606');
+    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fillStyle=grd;ctx.fill();
+    const gl=ctx.createRadialGradient(px-r*0.3,py-r*0.38,0,px-r*0.2,py-r*0.2,r*0.55);
+    gl.addColorStop(0,'rgba(255,255,255,0.26)');gl.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fillStyle=gl;ctx.fill();
+  }
+
+  function launch(){
+    if(active)return;active=true;dir*=-1;
+    const zTop=100,zBot=H*0.37,midY=(zTop+zBot)/2;
+    const trail=[];let t0=null;
+    const dur=7000;
+    const sign=dir===1?1:-1;
+
+    // Smooth continuous path: horizontal travel + one vertical loop
+    // Parametric: x moves left→right linearly, y follows a figure that
+    // does one full loop (sin going negative = up, then back) smoothly
+    // Using a cardioid-style blend: y = ry * sin(2πt) gives one up-down
+    // But for a real loop (goes up AND over), we need x to curl back too.
+    // Solution: offset x with a cosine term during the loop so the ball
+    // naturally curls into a teardrop/loop shape without stopping.
+
+    const zH=(zBot-zTop);
+    const ry=zH*0.44;           // vertical amplitude — fills the zone
+    const loopW=W*0.32;         // horizontal width of the loop
+    const totalW=W+80;          // total horizontal travel
+    const sx=sign===1?-40:W+40;
+
+    // Build path via parametric equations:
+    // As t goes 0→1, x travels full width.
+    // y does: flat entry → smooth loop over the top → flat exit
+    // The loop is created by a cosine bump on x (curling back) + sin on y
+    const STEPS=1200;
+    const pts=[];
+    for(let i=0;i<=STEPS;i++){
+      const u=i/STEPS;
+
+      const baseX=sx+sign*totalW*u;
+
+      // Raised cosine window — C∞ smooth, zero derivative at edges
+      const loopCenter=0.5;
+      const loopWidth=0.50;
+      const d=(u-loopCenter)/loopWidth;
+      const window=Math.abs(d)<1?0.5*(1+Math.cos(d*Math.PI)):0;
+
+      const loopAngle=(u-loopCenter+loopWidth/2)/loopWidth*Math.PI*2;
+      const curlX=-sign*loopW*0.5*Math.sin(loopAngle)*window;
+      const liftY=-ry*Math.sin(loopAngle)*window;
+
+      pts.push({x:baseX+curlX, y:midY+liftY});
+    }
+
+    // Arc-length table for uniform speed
+    const arcLen=[0];
+    for(let i=1;i<pts.length;i++){
+      const dx=pts[i].x-pts[i-1].x, dy=pts[i].y-pts[i-1].y;
+      arcLen.push(arcLen[i-1]+Math.sqrt(dx*dx+dy*dy));
+    }
+    const total=arcLen[arcLen.length-1];
+
+    function getPos(t){
+      const target=t*total;
+      let lo=0,hi=arcLen.length-1;
+      while(lo<hi-1){const mid=(lo+hi)>>1;if(arcLen[mid]<target)lo=mid;else hi=mid;}
+      const f=(target-arcLen[lo])/(arcLen[hi]-arcLen[lo]||1);
+      return {x:pts[lo].x+(pts[hi].x-pts[lo].x)*f, y:pts[lo].y+(pts[hi].y-pts[lo].y)*f};
+    }
+
+    function frame(ts){
+      if(!t0)t0=ts;
+      const t=Math.min((ts-t0)/dur,1);
+      const {x:px,y:py}=getPos(t);
+
+      // Fade out near edges (last/first 15% of journey)
+      const edgeFade=t<0.15?t/0.15:t>0.85?(1-t)/0.15:1;
+      const smooth=edgeFade<0.5?2*edgeFade*edgeFade:1-Math.pow(-2*edgeFade+2,2)/2;
+
+      trail.push({x:px,y:py,age:0,alpha:smooth});
+      trail.forEach(p=>p.age+=0.0015);
+      while(trail.length&&trail[0].age>1)trail.shift();
+      ctx.clearRect(0,0,W,H);
+      drawContrail(trail,smooth);
+      ctx.globalAlpha=smooth;
+      drawOrb(px,py);
+      ctx.globalAlpha=1;
+      if(t<1){requestAnimationFrame(frame);}
+      else{active=false;fadeT(trail);}
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function fadeT(trail){
+    if(!trail.length){ctx.clearRect(0,0,W,H);return;}
+    // Fade all remaining trail points quickly to zero
+    trail.forEach(p=>{p.age+=0.025; p.alpha=Math.max(0,(p.alpha||1)-0.04);});
+    trail=trail.filter(p=>p.alpha>0.01&&p.age<1);
+    ctx.clearRect(0,0,W,H);
+    // Use the minimum alpha across remaining points for global fade
+    const ga=trail.length?Math.min(...trail.map(p=>p.alpha||1)):0;
+    drawContrail(trail,ga);
+    if(trail.length)requestAnimationFrame(()=>fadeT(trail));
+    else ctx.clearRect(0,0,W,H);
+  }
+
+  function schedule(){setTimeout(()=>{launch();schedule();},40000);}
+  setTimeout(()=>{launch();schedule();},4000);
+})();
+
+// ── ANIMATION 2: TWO SENTENCES AFTER BALL — desktop only ──
+(function(){
+  if(window.innerWidth<769)return;
+  const hero=document.getElementById('home');
+
+  function makeTextEl(text){
+    const el=document.createElement('div');
+    el.textContent=text;
+    el.style.cssText=[
+      'position:absolute',
+      'z-index:6',
+      'left:0','right:0',
+      'text-align:center',
+      'font-family:"DM Serif Display",Georgia,serif',
+      'font-style:italic',
+      'font-weight:700',
+      'color:#0f0f0f',
+      'opacity:0',
+      'visibility:hidden',
+      'pointer-events:none',
+      'white-space:nowrap',
+      'line-height:1',
+      'transition:opacity 0.6s ease',
+    ].join(';');
+    hero.appendChild(el);
+    return el;
+  }
+
+  const el1=makeTextEl('KI ist gekommen, um zu bleiben...');
+  const el2=makeTextEl('...bist du bereit?');
+
+  function positionEls(){
+    const W=hero.offsetWidth;
+    const H=hero.offsetHeight;
+    const zTop=130, zBot=H*0.38;
+    const midY=(zTop+zBot)/2;
+    const hSize=Math.min(140,Math.max(64,W*0.10));
+    const fs=Math.round(hSize*0.20);
+    [el1,el2].forEach(el=>{
+      el.style.fontSize=fs+'px';
+      el.style.top=Math.round(midY-fs*0.5)+'px';
+    });
+  }
+  positionEls();
+  window.addEventListener('resize',positionEls);
+
+  function fadeIn(el){ 
+    el.style.visibility='visible';
+    el.style.transition='none'; el.style.opacity='0';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      el.style.transition='opacity 0.6s ease'; el.style.opacity='1';
+    }));
+  }
+  function fadeOut(el,cb){
+    el.style.transition='opacity 0.5s ease'; el.style.opacity='0';
+    setTimeout(()=>{ el.style.visibility='hidden'; cb&&cb(); },550);
+  }
+
+  let running=false;
+
+  function run(){
+    if(running)return;
+    running=true;
+    positionEls();
+
+    // Sentence 1 — wait for full fadeout before showing sentence 2
+    fadeIn(el1);
+    setTimeout(()=>{
+      fadeOut(el1,()=>{
+        // Clear el1 completely before showing el2
+        el1.style.opacity='0';
+        el1.style.visibility='hidden';
+        setTimeout(()=>{
+          el2.style.visibility='visible';
+          fadeIn(el2);
+          setTimeout(()=>{
+            fadeOut(el2,()=>{
+              el2.style.visibility='hidden';
+              running=false;
+            });
+          },3500);
+        },600);
+      });
+    },3200);
+  }
+
+  // Ball starts at 4s, lasts 7s → done at ~11s, +2s pause = 13s
+  function schedule(){setTimeout(()=>{run();schedule();},40000);}
+  setTimeout(()=>{run();schedule();},13000);
+})();
+
+
+// ── CONTACT FORM — Formspree ──
+function sendMail(e){
+  e.preventDefault();
+  const status=document.getElementById('cf-status');
+  const btn=e.target.querySelector('.cf-submit');
+  const data={
+    name:document.getElementById('cf-name').value.trim(),
+    email:document.getElementById('cf-email').value.trim(),
+    company:document.getElementById('cf-company').value.trim(),
+    message:document.getElementById('cf-message').value.trim(),
+  };
+
+  btn.textContent='Wird gesendet…';
+  btn.disabled=true;
+  status.textContent='';
+
+  fetch('https://formspree.io/f/mbdwvprw',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify(data),
+  })
+  .then(r=>r.json())
+  .then(res=>{
+    if(res.ok||res.next){
+      btn.textContent='✓ Gesendet';
+      status.textContent='Vielen Dank! Ich melde mich bald.';
+      status.style.color='rgba(100,220,150,.8)';
+      document.getElementById('contact-form').reset();
+      // Show back button
+      const back=document.createElement('button');
+      back.textContent='← Zurück zur Website';
+      back.style.cssText='margin-top:24px;display:block;background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);font-family:inherit;font-size:13px;padding:10px 20px;border-radius:980px;cursor:pointer;transition:all .2s;';
+      back.onmouseover=()=>{back.style.background='rgba(255,255,255,.08)';back.style.color='#fff';};
+      back.onmouseleave=()=>{back.style.background='none';back.style.color='rgba(255,255,255,.7)';};
+      back.onclick=()=>closeContact();
+      document.getElementById('cf-status').after(back);
+      setTimeout(()=>{ btn.textContent='Nachricht senden'; btn.disabled=false; status.textContent=''; back.remove(); },8000);
+    } else {
+      throw new Error('Fehler');
+    }
+  })
+  .catch(()=>{
+    btn.textContent='Nachricht senden';
+    btn.disabled=false;
+    status.textContent='Fehler beim Senden. Bitte versuche es erneut.';
+    status.style.color='rgba(255,100,100,.8)';
+  });
+}
+
+// ── CONTACT OVERLAY ──
+function openContact(){
+  const ov=document.getElementById('contact-overlay');
+  ov.style.display='block';
+  document.body.style.overflow='hidden';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add('visible')));
+}
+function closeContact(){
+  const ov=document.getElementById('contact-overlay');
+  ov.classList.remove('visible');
+  document.body.style.overflow='';
+  setTimeout(()=>{ ov.style.display='none'; },380);
+}
+// Close on backdrop click
+document.getElementById('contact-overlay').addEventListener('click',function(e){
+  if(e.target===this)closeContact();
+});
+// ESC key
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeContact(); });
+
+// ── SMOOTH SCROLL — custom eased animation ──
+function smoothScrollTo(targetY,duration){
+  const startY=window.scrollY;
+  const dist=targetY-startY;
+  let start=null;
+  function step(ts){
+    if(!start)start=ts;
+    const elapsed=ts-start;
+    const t=Math.min(elapsed/duration,1);
+    const ease=t<0.5?4*t*t*t:(t-1)*(2*t-2)*(2*t-2)+1;
+    window.scrollTo(0,startY+dist*ease);
+    if(t<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// Nav data-scroll links
+document.querySelectorAll('[data-scroll]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    e.preventDefault();
+    const id=a.getAttribute('data-scroll');
+    const target=document.querySelector(id);
+    if(!target)return;
+    const top=target.getBoundingClientRect().top+window.scrollY-54;
+    smoothScrollTo(top,900);
+  });
+});
+
+// ── SCROLL REVEAL ──
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('v');});
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+</script>
+</body>
+</html>
