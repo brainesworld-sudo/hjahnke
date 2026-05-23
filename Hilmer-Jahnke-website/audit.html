@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Möbel Quality Audit Pro v4.9</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
+    <style>
+        :root {
+            --audit-neutral: #2c3e50;
+            --audit-blue: #2980b9;
+            --success-green: #e8f5e9;
+            --error-red: #ffebee;
+            --bg-light: #f0f2f5;
+            --border-color: #d1d8dd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-light);
+            margin: 0;
+            color: #333;
+        }
+
+        header {
+            background-color: white;
+            border-bottom: 4px solid var(--audit-neutral);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-box {
+            background-color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #logo-preview {
+            max-height: 50px;
+            max-width: 150px;
+            object-fit: contain;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 35px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .card.completed {
+            background-color: var(--success-green);
+            border-color: #a5d6a7;
+        }
+
+        /* Stammdaten Bereich */
+        .meta-card {
+            background: #ffffff;
+            border-left: 5px solid var(--audit-blue);
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #fff0f0;
+            border: 1px solid #ffcccc;
+            color: #c0392b;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover { background: #c0392b; color: white; }
+
+        h3 { color: var(--audit-blue); margin-top: 0; margin-bottom: 20px; font-size: 1.2rem; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .ean-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            background: #fdfdfd;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            margin-bottom: 15px;
+        }
+
+        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.75rem; color: #666; text-transform: uppercase; }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .ean-match { background-color: #c8e6c9 !important; border-color: #4caf50; }
+        .ean-mismatch { background-color: #ffcdd2 !important; border-color: #f44336; }
+
+        .checklist {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            padding: 10px 0;
+            margin: 10px 0;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .check-item input { width: 20px; height: 20px; accent-color: var(--audit-blue); }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            padding: 30px 0;
+            background: var(--bg-light);
+        }
+
+        button.main-btn {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn-red { background: #c0392b; }
+        .btn-blue { background: var(--audit-blue); }
+        .btn-dark { background: #444; }
+
+        .preview-img {
+            width: 110px;
+            height: 110px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-top: 10px;
+            margin-right: 10px;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-area">
+        <input type="file" id="logo-upload" accept="image/*" style="display:none" onchange="handleLogo(event)">
+        <button onclick="document.getElementById('logo-upload').click()" style="font-size: 0.7rem; padding: 5px; cursor:pointer;">Logo hochladen</button>
+        <div class="logo-box" id="logo-box">
+            <img id="logo-preview" src="" alt="Firmenlogo">
+        </div>
+        <h1 id="main-title">Möbel Audit Pro</h1>
+    </div>
+    <div style="text-align: right">
+        <div style="font-weight: bold; color: var(--audit-neutral);">QUALITY INSPECTION</div>
+        <small id="date-string"></small>
+    </div>
+</header>
+
+<div class="container">
+    <!-- STAMMDATEN CARD -->
+    <div class="card meta-card">
+        <h3>STAMMDATEN QUALITY AUDIT</h3>
+        <div class="grid">
+            <div><label>Hersteller / Lieferant</label><input type="text" id="meta-supplier" placeholder="z.B. Möbelwerk Muster GmbH" oninput="saveMetaData()"></div>
+            <div><label>Datum des Audits</label><input type="date" id="meta-date" oninput="saveMetaData()"></div>
+            <div><label>Lieferschein / Frachtbrief Nr.</label><input type="text" id="meta-ref" placeholder="LS-12345" oninput="saveMetaData()"></div>
+            <div><label>Qualitätsprüfer</label><input type="text" id="meta-auditor" placeholder="Name des Prüfers" oninput="saveMetaData()"></div>
+        </div>
+    </div>
+
+    <div id="article-list"></div>
+
+    <div class="btn-group">
+        <button class="main-btn btn-blue" onclick="addArticle()"><i data-lucide="plus"></i> Position hinzufügen</button>
+        <button class="main-btn btn-dark" onclick="saveData()"><i data-lucide="save"></i> Stand speichern</button>
+        <button class="main-btn btn-dark" onclick="document.getElementById('fileInput').click()"><i data-lucide="folder-open"></i> Laden</button>
+        <input type="file" id="fileInput" style="display:none" onchange="loadData(event)">
+        <button class="main-btn btn-red" onclick="generatePDF()"><i data-lucide="printer"></i> PDF Protokoll</button>
+    </div>
+</div>
+
+<script>
+    let articles = [];
+    let customLogo = null;
+    let logoRatio = 1; 
+    let metaData = { supplier: '', date: '', ref: '', auditor: '' };
+    const EAN_PREFIX = "4005143";
+
+    // Setze heutiges Datum als Default
+    document.getElementById('meta-date').valueAsDate = new Date();
+    document.getElementById('date-string').innerText = new Date().toLocaleDateString('de-DE');
+
+    function saveMetaData() {
+        metaData.supplier = document.getElementById('meta-supplier').value;
+        metaData.date = document.getElementById('meta-date').value;
+        metaData.ref = document.getElementById('meta-ref').value;
+        metaData.auditor = document.getElementById('meta-auditor').value;
+    }
+
+    function handleLogo(event) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imgObj = new Image();
+            imgObj.onload = () => {
+                logoRatio = imgObj.width / imgObj.height;
+                customLogo = e.target.result;
+                const imgPreview = document.getElementById('logo-preview');
+                imgPreview.src = customLogo;
+                document.getElementById('logo-box').style.display = 'flex';
+                document.getElementById('main-title').style.display = 'none';
+            };
+            imgObj.src = e.target.result;
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
+    function addArticle() {
+        articles.push({
+            id: Date.now(),
+            artNr: '',
+            bezeichnung: '',
+            ausfuehrung: 'Korpusmöbel',
+            eanSoll: EAN_PREFIX,
+            eanIst: '', 
+            checks: { farbe: false, etikett: false, schrumpf: false, dachreiter: false },
+            bemerkung: '',
+            images: []
+        });
+        render();
+    }
+
+    function validateEanLive(idx, inputElement) {
+        const val = inputElement.value;
+        articles[idx].eanIst = val;
+        const soll = articles[idx].eanSoll;
+        
+        inputElement.classList.remove('ean-match', 'ean-mismatch');
+        if (val.length > 0) {
+            if (val === soll) {
+                inputElement.classList.add('ean-match');
+            } else {
+                inputElement.classList.add('ean-mismatch');
+            }
+        }
+    }
+
+    function render() {
+        const list = document.getElementById('article-list');
+        list.innerHTML = '';
+        articles.forEach((art, idx) => {
+            const isDone = Object.values(art.checks).every(v => v === true);
+            const card = document.createElement('div');
+            card.className = `card ${isDone ? 'completed' : ''}`;
+            
+            const eanClass = (art.eanIst.length > 0) ? (art.eanIst === art.eanSoll ? 'ean-match' : 'ean-mismatch') : '';
+
+            card.innerHTML = `
+                <button class="delete-btn" onclick="removeArticle(${idx})"><i data-lucide="trash-2" size="14"></i> Position löschen</button>
+                <h3>POSITION ${idx + 1}</h3>
+                <div class="grid">
+                    <div><label>Artikelnummer / ID</label><input type="text" value="${art.artNr}" oninput="update(${idx},'artNr',this.value)"></div>
+                    <div><label>Modell / Bezeichnung</label><input type="text" value="${art.bezeichnung}" oninput="update(${idx},'bezeichnung',this.value)"></div>
+                    <div><label>Möbel-Kategorie</label>
+                        <select onchange="update(${idx},'ausfuehrung',this.value)">
+                            <option value="Korpusmöbel" ${art.ausfuehrung==='Korpusmöbel'?'selected':''}>Korpusmöbel</option>
+                            <option value="Fronten / Türen" ${art.ausfuehrung==='Fronten / Türen'?'selected':''}>Fronten / Türen</option>
+                            <option value="Tische / Arbeitsplatten" ${art.ausfuehrung==='Tische / Arbeitsplatten'?'selected':''}>Tische / Arbeitsplatten</option>
+                            <option value="Polstermöbel / Sitze" ${art.ausfuehrung==='Polstermöbel / Sitze'?'selected':''}>Polstermöbel / Sitze</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ean-row">
+                    <div><label>EAN Soll Vorgabe</label><input type="text" value="${art.eanSoll}" oninput="update(${idx},'eanSoll',this.value)"></div>
+                    <div><label>EAN Ist Erfassung (Barcode-Scanner)</label>
+                        <input type="text" 
+                               class="${eanClass}" 
+                               value="${art.eanIst}" 
+                               placeholder="Scannen oder manuell eingeben..." 
+                               oninput="validateEanLive(${idx}, this)"
+                               onkeydown="if(event.key === 'Enter'){ event.preventDefault(); }">
+                    </div>
+                </div>
+                <div class="checklist">
+                    <label class="check-item"><input type="checkbox" ${art.checks.farbe?'checked':''} onchange="toggleCheck(${idx},'farbe')"> Oberfläche / Farbe ok</label>
+                    <label class="check-item"><input type="checkbox" ${art.checks.etikett?'checked':''} onchange="toggleCheck(${idx},'etikett')"> Kanten / Umleimer ok</label>
+                    <label class="check-item"><input type="checkbox" ${art.checks.schrumpf?'checked':''} onchange="toggleCheck(${idx},'schrumpf')"> Beschläge / Bohrung ok</label>
+                    <label class="check-item"><input type="checkbox" ${art.checks.dachreiter?'checked':''} onchange="toggleCheck(${idx},'dachreiter')"> Endverpackung ok</label>
+                </div>
+                <label>Festgestellte Mängel / Abweichungen / Maßnahmen</label>
+                <textarea rows="2" oninput="update(${idx},'bemerkung',this.value)">${art.bemerkung}</textarea>
+                <div style="margin-top:15px"><input type="file" accept="image/*" multiple onchange="processImg(event,${idx})"></div>
+                <div id="imgs-${idx}">${art.images.map(img => `<img src="${img}" class="preview-img">`).join('')}</div>
+            `;
+            list.appendChild(card);
+        });
+        lucide.createIcons();
+    }
+
+    function update(idx, f, v) { articles[idx][f] = v; }
+    function toggleCheck(idx, k) { articles[idx].checks[k] = !articles[idx].checks[k]; render(); }
+    function removeArticle(idx) { if(confirm("Position unwiderruflich löschen?")) { articles.splice(idx,1); render(); } }
+
+    async function processImg(event, idx) {
+        const files = Array.from(event.target.files).slice(0,3);
+        articles[idx].images = [];
+        for(let f of files) {
+            const res = await new Promise(r => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canv = document.createElement('canvas');
+                        const MAX_W = 800;
+                        canv.width = MAX_W; canv.height = img.height * (MAX_W/img.width);
+                        canv.getContext('2d').drawImage(img, 0, 0, MAX_W, canv.height);
+                        r(canv.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(f);
+            });
+            articles[idx].images.push(res);
+        }
+        render();
+    }
+
+    function saveData() {
+        const data = { articles, logo: customLogo, logoRatio, metaData };
+        const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Qualitaets_Audit_Backup.json`;
+        a.click();
+    }
+
+    function loadData(event) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = JSON.parse(e.target.result);
+            articles = data.articles;
+            if(data.metaData) {
+                metaData = data.metaData;
+                document.getElementById('meta-supplier').value = metaData.supplier || '';
+                document.getElementById('meta-date').value = metaData.date || '';
+                document.getElementById('meta-ref').value = metaData.ref || '';
+                document.getElementById('meta-auditor').value = metaData.auditor || '';
+            }
+            if(data.logo) {
+                customLogo = data.logo; logoRatio = data.logoRatio || 1;
+                const img = document.getElementById('logo-preview');
+                img.src = customLogo; document.getElementById('logo-box').style.display = 'flex';
+                document.getElementById('main-title').style.display = 'none';
+            }
+            render();
+        };
+        reader.readAsText(event.target.files[0]);
+    }
+
+    async function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        let y = 55; let p = 1;
+
+        const drawHeader = () => {
+            if(customLogo) {
+                try { 
+                    let logoHeight = 15;
+                    let logoWidth = logoHeight * logoRatio;
+                    if(logoWidth > 50) { logoWidth = 50; logoHeight = logoWidth / logoRatio; }
+                    doc.setFillColor(255, 255, 255);
+                    doc.roundedRect(12, 8, logoWidth + 6, logoHeight + 4, 1, 1, 'F');
+                    doc.addImage(customLogo, 'JPEG', 15, 10, logoWidth, logoHeight); 
+                } catch(e){}
+            }
+            doc.setTextColor(44, 62, 80);
+            doc.setFontSize(16); doc.setFont("helvetica", "bold");
+            doc.text("MÖBEL QUALITY AUDIT BERICHT", 70, 15);
+            doc.setFontSize(9);
+            doc.text(`Seite ${p} | Stand: ${new Date().toLocaleDateString()}`, 165, 15);
+            doc.setDrawColor(44, 62, 80);
+            doc.setLineWidth(1);
+            doc.line(15, 28, 195, 28);
+
+            // Stammdaten im PDF Header Bereich
+            doc.setFontSize(10); doc.setTextColor(41, 128, 185);
+            doc.text(`Hersteller/Lieferant: ${metaData.supplier || '-'}`, 15, 35);
+            doc.text(`Ref/Lieferschein: ${metaData.ref || '-'}`, 95, 35);
+            doc.text(`Prüfer: ${metaData.auditor || '-'}`, 155, 35);
+            doc.text(`Audit-Datum: ${metaData.date ? new Date(metaData.date).toLocaleDateString() : '-'}`, 15, 42);
+            doc.setDrawColor(220); doc.line(15, 45, 195, 45);
+        };
+
+        drawHeader();
+
+        for(let i=0; i<articles.length; i++) {
+            const a = articles[i];
+            if(y > 230) { doc.addPage(); p++; y=55; drawHeader(); }
+
+            doc.setFillColor(245, 245, 245);
+            doc.rect(15, y-5, 180, 8, 'F');
+            doc.setTextColor(41, 128, 185);
+            doc.setFontSize(11);
+            doc.text(`POS. ${i+1}: ${a.artNr} - ${a.bezeichnung}`, 18, y);
+            y += 10;
+
+            doc.setTextColor(50); doc.setFontSize(9); doc.setFont("helvetica", "normal");
+            doc.text(`EAN Soll: ${a.eanSoll}`, 18, y);
+            doc.text(`EAN Ist: ${a.eanIst}`, 70, y);
+            doc.text(`Kategorie: ${a.ausfuehrung}`, 130, y);
+            y += 8;
+
+            const drawCheck = (label, val, x) => {
+                doc.setDrawColor(180); doc.rect(x, y-3, 3.5, 3.5);
+                if(val) {
+                    doc.setDrawColor(0, 150, 0);
+                    doc.line(x+0.5, y-1.5, x+1.5, y-0.5); doc.line(x+1.5, y-0.5, x+3, y-3.5);
+                }
+                doc.setTextColor(50); doc.text(label, x+6, y);
+            };
+
+            drawCheck("Oberfläche ok", a.checks.farbe, 18);
+            drawCheck("Kanten ok", a.checks.etikett, 60);
+            drawCheck("Beschläge ok", a.checks.schrumpf, 105);
+            drawCheck("Verpackung ok", a.checks.dachreiter, 155);
+            y += 8;
+
+            if(a.bemerkung) {
+                doc.setTextColor(44, 62, 80);
+                doc.setFont("helvetica", "bold");
+                doc.text(`Abweichung/Maßnahme: ${a.bemerkung}`, 18, y);
+                doc.setFont("helvetica", "normal");
+                y += 8;
+            }
+
+            if(a.images.length > 0) {
+                a.images.forEach((img, idx) => {
+                    try { doc.addImage(img, 'JPEG', 18 + (idx*45), y, 40, 30); } catch(e){}
+                });
+                y += 35;
+            }
+            y += 10;
+            doc.setDrawColor(220); doc.line(15, y-5, 195, y-5);
+        }
+
+        doc.save(`Möbel_Audit_Bericht_${metaData.supplier || 'Export'}.pdf`);
+    }
+
+    addArticle();
+</script>
+</body>
+</html>

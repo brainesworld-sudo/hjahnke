@@ -1,0 +1,364 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF-Präzisions-Optimierer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        :root {
+            --primary: #0071e3;
+            --danger: #ff3b30;
+            --warning: #ff9500;
+            --bg: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 550px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        h1 { font-size: 28px; font-weight: 600; margin-bottom: 25px; letter-spacing: -0.5px; }
+
+        .drop-area {
+            border: 2px dashed #d2d2d7;
+            border-radius: 18px;
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.4);
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .drop-area.dragover { border-color: var(--primary); background: rgba(0, 113, 227, 0.05); }
+        .drop-area p { margin: 0; font-size: 14px; color: var(--primary); font-weight: 500; pointer-events: none; }
+
+        .settings-group { text-align: left; margin-bottom: 25px; }
+        label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 10px; }
+
+        .slider-container { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+        input[type=range] { flex: 1; accent-color: var(--primary); }
+
+        .quick-steps { display: flex; gap: 8px; margin-bottom: 20px; }
+        .step-btn { 
+            flex: 1; background: #e8e8ed; border: none; padding: 6px; 
+            border-radius: 8px; font-size: 10px; font-weight: 600; cursor: pointer; color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .step-btn:hover { background: #d2d2d7; }
+
+        #alertBox {
+            display: none;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        #alertBox p { margin: 0 0 10px 0; font-size: 13px; color: var(--danger); line-height: 1.4; }
+        .alert-actions { display: flex; gap: 10px; }
+        .alert-btn { border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        #forceBtn { background: var(--danger); color: white; }
+        #stopBtn { background: #e8e8ed; color: var(--text); }
+
+        #warningBox {
+            display: none;
+            background: rgba(255, 149, 0, 0.1);
+            border: 1px solid var(--warning);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        #warningBox p { margin: 0 0 10px 0; font-size: 13px; color: #856404; line-height: 1.4; }
+        .warning-actions { display: flex; gap: 10px; }
+        .warning-btn { border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        #anywayBtn { background: var(--warning); color: white; }
+        #cancelBtn { background: #e8e8ed; color: var(--text); }
+
+        .progress-wrapper { display: none; margin-bottom: 25px; text-align: left; }
+        .progress-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 5px; display: block; }
+        .progress-bar-bg { width: 100%; height: 6px; background: #e8e8ed; border-radius: 10px; overflow: hidden; }
+        .progress-bar-fill { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease; }
+
+        .btn-group { display: flex; flex-direction: column; gap: 10px; }
+        button.main-btn { width: 100%; border: none; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        #processBtn { background: var(--primary); color: white; }
+        #downloadAllBtn { background: #34c759; color: white; display: none; }
+        #clearBtn { background: none; color: var(--danger); font-size: 13px; padding: 5px; margin-top: 10px; display: none; }
+        
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        #resultsList { margin-top: 30px; max-height: 300px; overflow-y: auto; text-align: left; }
+        .result-item {
+            background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        
+        .pdf-icon { width: 40px; height: 40px; background: #ff3b30; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; }
+        .result-info { flex: 1; min-width: 0; }
+        .result-info .name { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .result-info .size-info { display: block; font-size: 11px; color: var(--text-secondary); }
+
+        .footer { margin-top: 30px; font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <h1>PDF-Präzisions-Optimierer</h1>
+
+    <div class="drop-area" id="dropArea">
+        <p id="fileName">PDFs hierher ziehen oder klicken</p>
+        <input type="file" id="fileInput" accept="application/pdf" multiple hidden>
+    </div>
+
+    <div class="settings-group">
+        <label>Exakte Zielgröße: <span id="targetValue">1.0 MB</span></label>
+        <div class="slider-container">
+            <input type="range" id="targetSize" min="100" max="10000" step="50" value="1000">
+        </div>
+        <div class="quick-steps">
+            <button class="step-btn" onclick="setTarget(500)">500 KB</button>
+            <button class="step-btn" onclick="setTarget(1000)">1 MB</button>
+            <button class="step-btn" onclick="setTarget(2000)">2 MB</button>
+            <button class="step-btn" onclick="setTarget(5000)">5 MB</button>
+            <button class="step-btn" onclick="setTarget(10000)">10 MB</button>
+        </div>
+    </div>
+
+    <div id="warningBox">
+        <p><strong>Hinweis:</strong> Die gewählte Zielgröße ist deutlich höher als das Original. Eine Umwandlung ist in dieser Größe nicht sinnvoll.</p>
+        <div class="warning-actions">
+            <button class="warning-btn" id="anywayBtn">Trotzdem umwandeln</button>
+            <button class="warning-btn" id="cancelBtn">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="alertBox">
+        <p id="alertMsg"><strong>Zielgröße nicht möglich.</strong> Möglich ist: ca. 0 KB.</p>
+        <div class="alert-actions">
+            <button class="alert-btn" id="forceBtn">Trotzdem umwandeln</button>
+            <button class="alert-btn" id="stopBtn">Abbrechen</button>
+        </div>
+    </div>
+
+    <div class="progress-wrapper" id="progressWrapper">
+        <span class="progress-label" id="progressLabel">Berechne...</span>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+    </div>
+
+    <div class="btn-group">
+        <button id="processBtn" class="main-btn">PDF jetzt präzise umwandeln</button>
+        <button id="downloadAllBtn" class="main-btn">Optimierte PDFs speichern</button>
+        <button id="clearBtn">Liste leeren</button>
+    </div>
+
+    <div id="resultsList"></div>
+
+    <div class="footer">
+        Status-Tracking & Down-Rendering Aktiv.<br>
+        Eine App von Hilmer Jahnke 5/2026
+    </div>
+</div>
+
+<script>
+    const { PDFDocument } = PDFLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const fileInput = document.getElementById('fileInput');
+    const dropArea = document.getElementById('dropArea');
+    const fileNameDisplay = document.getElementById('fileName');
+    const targetSizeSlider = document.getElementById('targetSize');
+    const targetValue = document.getElementById('targetValue');
+    const processBtn = document.getElementById('processBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const resultsList = document.getElementById('resultsList');
+    const progressBar = document.getElementById('progressBar');
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressLabel = document.getElementById('progressLabel');
+    const warningBox = document.getElementById('warningBox');
+    const alertBox = document.getElementById('alertBox');
+    const alertMsg = document.getElementById('alertMsg');
+    
+    let selectedFiles = [];
+    let processedFiles = [];
+    let pendingBlob = null;
+    let pendingFile = null;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+    });
+
+    dropArea.addEventListener('dragover', () => dropArea.classList.add('dragover'));
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+    dropArea.addEventListener('drop', (e) => {
+        dropArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleFiles(Array.from(e.dataTransfer.files));
+    });
+
+    dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFiles(Array.from(e.target.files)); });
+
+    function handleFiles(files) {
+        selectedFiles = files.filter(f => f.type === 'application/pdf');
+        if (selectedFiles.length === 0) return alert('Bitte nur PDF-Dateien auswählen.');
+        fileNameDisplay.textContent = selectedFiles.length + ' PDFs bereit';
+        resultsList.innerHTML = '';
+        warningBox.style.display = 'none';
+        alertBox.style.display = 'none';
+    }
+
+    targetSizeSlider.addEventListener('input', (e) => { targetValue.textContent = formatSize(e.target.value * 1024); });
+    window.setTarget = (kb) => { targetSizeSlider.value = kb; targetValue.textContent = formatSize(kb * 1024); };
+
+    processBtn.addEventListener('click', () => {
+        if (selectedFiles.length === 0) return alert('Bitte zuerst PDFs auswählen.');
+        const targetBytes = targetSizeSlider.value * 1024;
+        if (selectedFiles[0].size * 1.5 < targetBytes) {
+            warningBox.style.display = 'block';
+        } else {
+            startProcessing();
+        }
+    });
+
+    document.getElementById('anywayBtn').addEventListener('click', () => { warningBox.style.display = 'none'; startProcessing(); });
+    document.getElementById('cancelBtn').addEventListener('click', () => { warningBox.style.display = 'none'; });
+    document.getElementById('stopBtn').addEventListener('click', () => { alertBox.style.display = 'none'; });
+    document.getElementById('forceBtn').addEventListener('click', () => {
+        alertBox.style.display = 'none';
+        finalizeResult(pendingFile, pendingBlob);
+    });
+
+    async function startProcessing() {
+        processedFiles = [];
+        processBtn.disabled = true;
+        progressWrapper.style.display = 'block';
+        resultsList.innerHTML = '';
+        const targetBytes = targetSizeSlider.value * 1024;
+
+        for (let f = 0; f < selectedFiles.length; f++) {
+            await compressExact(selectedFiles[f], targetBytes, f, selectedFiles.length);
+        }
+        processBtn.disabled = false;
+    }
+
+    async function compressExact(file, targetBytes, fileIndex, totalFiles) {
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        let bestBlob = null;
+        let low = 0.2, high = 12.0;
+
+        for (let j = 0; j < 8; j++) {
+            let mid = (low + high) / 2;
+            const tempPdf = await PDFDocument.create();
+            progressLabel.textContent = `Analyse ${j+1}/8...`;
+            progressBar.style.width = `${((fileIndex / totalFiles) * 100) + (((j+1)/8/totalFiles) * 100)}%`;
+
+            let scale = Math.sqrt(targetBytes / 500000) * mid;
+            scale = Math.min(10, Math.max(0.2, scale));
+            let quality = Math.min(0.98, 0.3 + (mid * 0.1));
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: scale });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width; canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                const imgData = canvas.toDataURL('image/jpeg', quality);
+                const img = await tempPdf.embedJpg(imgData);
+                const newPage = tempPdf.addPage([viewport.width, viewport.height]);
+                newPage.drawImage(img, { x: 0, y: 0, width: viewport.width, height: viewport.height });
+            }
+            const pdfBytes = await tempPdf.save();
+            const currentSize = pdfBytes.length;
+            if (currentSize <= targetBytes) {
+                bestBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+                low = mid;
+            } else {
+                high = mid;
+                if (!bestBlob) bestBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            }
+        }
+
+        // Final Check: +/- 20%
+        const diff = Math.abs(bestBlob.size - targetBytes) / targetBytes;
+        if (diff > 0.20) {
+            pendingBlob = bestBlob;
+            pendingFile = file;
+            alertMsg.innerHTML = `<strong>Zielgröße nicht möglich.</strong><br>Möglich ist: ca. ${formatSize(bestBlob.size)}.`;
+            alertBox.style.display = 'block';
+            progressWrapper.style.display = 'none';
+        } else {
+            finalizeResult(file, bestBlob);
+        }
+    }
+
+    function finalizeResult(file, blob) {
+        processedFiles.push({ name: 'opt_' + file.name, url: URL.createObjectURL(blob) });
+        addResultItem(file.name, formatSize(file.size), formatSize(blob.size), processedFiles[processedFiles.length-1].url);
+        downloadAllBtn.style.display = 'block';
+        clearBtn.style.display = 'block';
+        progressLabel.textContent = 'Fertig!';
+    }
+
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 2 ? 1 : 1)) + ' ' + sizes[i];
+    }
+
+    function addResultItem(name, oldSize, newSize, url) {
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        item.innerHTML = `<div class="pdf-icon">PDF</div><div class="result-info"><span class="name">${name}</span><span class="size-info">${oldSize} ➔ <b>${newSize}</b></span></div><a href="${url}" download="opt_${name}" style="color:var(--primary); font-size:12px; font-weight:600; text-decoration:none;">Speichern</a>`;
+        resultsList.appendChild(item);
+    }
+
+    document.getElementById('downloadAllBtn').addEventListener('click', () => {
+        processedFiles.forEach((file, i) => { setTimeout(() => { const link = document.createElement('a'); link.href = file.url; link.download = file.name; link.click(); }, i * 300); });
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        selectedFiles = []; processedFiles = []; resultsList.innerHTML = ''; fileNameDisplay.textContent = 'PDFs hierher ziehen oder klicken';
+        downloadAllBtn.style.display = 'none'; clearBtn.style.display = 'none'; progressWrapper.style.display = 'none'; alertBox.style.display = 'none'; fileInput.value = '';
+    });
+</script>
+</body>
+</html>

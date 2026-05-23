@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protokoll App</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --line: #e2e8f0;
+      --text: #1e293b;
+      --accent-blue: #2563eb;
+      --brand-red: #e11d48;
+      --radius: 12px;
+    }
+    body { margin: 0; font-family: Arial, sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.5; }
+    .container { max-width: 850px; margin: 40px auto; padding: 0 20px; }
+    .card { background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--line); padding: 25px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    h2 { color: var(--accent-blue); font-size: 1.2rem; margin-top: 0; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+    label { display: block; font-weight: 700; margin: 15px 0 5px 0; font-size: 0.9rem; }
+    input, textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-family: inherit; font-size: 1rem; box-sizing: border-box; }
+    .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+    button { padding: 12px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.2s; }
+    .btn-save { background: #059669; color: white; }
+    .btn-outline { background: #ffffff; color: #475569; border: 1px solid #cbd5e1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { text-align: left; padding: 10px; background: #f1f5f9; border-bottom: 2px solid var(--line); }
+    td { padding: 8px; border-bottom: 1px solid var(--line); }
+    .logo-preview { max-width: 150px; max-height: 80px; margin-top: 10px; border: 1px dashed #ccc; padding: 5px; }
+    
+    .pdf-page {
+        width: 794px; height: 1123px; padding: 50px; background: white; 
+        box-sizing: border-box; display: flex; flex-direction: column;
+        position: relative; overflow: hidden; font-family: Arial, sans-serif;
+    }
+    .pdf-header { display: flex; justify-content: space-between; border-bottom: 4px solid #e11d48; padding-bottom: 15px; margin-bottom: 20px; }
+    .pdf-body { flex-grow: 1; }
+    .pdf-footer { text-align: center; font-size: 9pt; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 20px; display: flex; justify-content: space-between; }
+    #pdf-hidden-container { position: absolute; left: -10000px; top: 0; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h1 style="text-align:center;">Protokoll App</h1>
+  
+  <div class="card">
+    <h2>1. Logo & Daten</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div>
+        <label>Firmenlogo hochladen</label>
+        <input type="file" id="logoInput" accept="image/*" onchange="handleLogo(this)">
+        <img id="logoPreview" class="logo-preview" src="">
+      </div>
+      <div><label>JSON Import (Vorherige Daten)</label><input type="file" accept=".json" onchange="importData(this)"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Details</h2>
+    <label>Titel</label><input type="text" id="title" placeholder="z. B. Projekt Kick-off">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+       <div><label>Datum</label><input type="date" id="date"></div>
+       <div><label>Ort</label><input type="text" id="location" placeholder="z. B. Besprechungsraum / Online"></div>
+    </div>
+    <label>Teilnehmer (Ein Name pro Zeile)</label><textarea id="participants" rows="3" placeholder="Max Mustermann&#10;Erika Mustermann"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>3. Protokoll</h2>
+    <label>Zusammenfassung / Verlauf</label><textarea id="summary" rows="8" placeholder="Wesentliche Inhalte und Diskussionspunkte..."></textarea>
+    <label>Beschlüsse (Einer pro Zeile)</label><textarea id="decisions" rows="3" style="color:var(--brand-red); font-weight:bold;" placeholder="Wichtige Ergebnisse oder Beschlüsse..."></textarea>
+  </div>
+
+  <div class="card">
+    <h2>4. Aufgaben & Termine</h2>
+    <table id="taskTable">
+      <thead><tr><th>Aufgabe / ToDo</th><th style="width:25%;">Wer</th><th style="width:25%;">Termin</th><th style="width:40px;"></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <button type="button" class="btn-outline" style="margin-top:10px;" onclick="addTaskRow()">+ Aufgabe hinzufügen</button>
+  </div>
+
+  <div class="btn-group">
+    <button type="button" id="btnDownload" class="btn-save">Export starten (ZIP: PDF & JSON)</button>
+    <button type="button" onclick="loadSample()" class="btn-outline">Beispieldaten laden</button>
+  </div>
+</div>
+
+<div id="pdf-hidden-container"></div>
+
+<script>
+  let currentLogoData = "";
+
+  function handleLogo(input) {
+    const file = input.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentLogoData = e.target.result;
+        document.getElementById('logoPreview').src = currentLogoData;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function addTaskRow(t='', w='', d='') {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td><input type="text" class="t-task" value="${t}" placeholder="Aufgabenbeschreibung"></td><td><input type="text" class="t-owner" value="${w}" placeholder="Name"></td><td><input type="text" class="t-deadline" value="${d}" placeholder="Datum / KW"></td><td><button onclick="this.closest('tr').remove()" style="color:red; background:none; cursor:pointer; font-weight:bold; border:none; font-size:1.2rem;">×</button></td>`;
+    document.querySelector('#taskTable tbody').appendChild(row);
+  }
+
+  function importData(input) {
+    const file = input.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = JSON.parse(e.target.result);
+        document.getElementById('title').value = data.title || "";
+        document.getElementById('date').value = data.date || "";
+        document.getElementById('location').value = data.location || "";
+        document.getElementById('participants').value = data.participants || "";
+        document.getElementById('summary').value = data.summary || "";
+        document.getElementById('decisions').value = data.decisions || "";
+        const tbody = document.querySelector('#taskTable tbody');
+        tbody.innerHTML = "";
+        if (data.tasks) data.tasks.forEach(tk => addTaskRow(tk.t, tk.w, tk.d));
+        if (data.logo) { currentLogoData = data.logo; document.getElementById('logoPreview').src = data.logo; }
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  document.getElementById('btnDownload').addEventListener('click', async () => {
+    const title = document.getElementById('title').value || "Meeting";
+    const date = document.getElementById('date').value || "";
+    const location = document.getElementById('location').value || "";
+    const participants = document.getElementById('participants').value || "";
+    const summary = document.getElementById('summary').value || "";
+    const decisions = document.getElementById('decisions').value || "";
+    const tasks = Array.from(document.querySelectorAll('#taskTable tbody tr')).map(tr => ({
+      t: tr.querySelector('.t-task').value,
+      w: tr.querySelector('.t-owner').value,
+      d: tr.querySelector('.t-deadline').value
+    }));
+
+    const container = document.getElementById('pdf-hidden-container');
+    container.innerHTML = "";
+
+    const partHtml = participants.split('\n').filter(x => x.trim()).map(x => `<div>• ${x}</div>`).join('');
+    const decHtml = decisions.split('\n').filter(x => x.trim()).map(x => `
+      <div style="display:flex; align-items:flex-start; color:#e11d48; font-weight:bold; margin-bottom:8px;">
+        <div style="width:12px; height:12px; border:2px solid #e11d48; margin-right:10px; margin-top:4px; flex-shrink:0;"></div>
+        <div>${x}</div>
+      </div>`).join('');
+    const taskRows = tasks.map(tk => `<tr><td style="padding:8px; border:1px solid #cbd5e1; word-break:break-word;">${tk.t}</td><td style="padding:8px; border:1px solid #cbd5e1;">${tk.w}</td><td style="padding:8px; border:1px solid #cbd5e1;">${tk.d}</td></tr>`).join('');
+
+    function createPage(pageNum) {
+        const page = document.createElement('div');
+        page.className = 'pdf-page';
+        page.innerHTML = `
+            <div class="pdf-header">
+                <div><h1 style="margin:0; font-size:22pt; color:#1e293b;"><span style="color:#e11d48;">▶</span> ${title}</h1><p style="margin:5px 0 0 0; font-size:11pt; color:#475569;">Datum: ${date} | Ort: ${location}</p></div>
+                ${currentLogoData ? `<img src="${currentLogoData}" style="max-width:140px; max-height:60px; object-fit:contain;">` : ''}
+            </div>
+            <div class="pdf-body"></div>
+            <div class="pdf-footer">
+                <div>Hilmer Jahnke / 2026</div>
+                <div>Seite ${pageNum}</div>
+            </div>`;
+        return page;
+    }
+
+    const page1 = createPage(1);
+    page1.querySelector('.pdf-body').innerHTML = `
+        <h2 style="color:#2563eb; border-bottom:1px solid #e2e8f0; padding-bottom:5px; font-size: 14pt;"><span style="color:#e11d48;">▶</span> Teilnehmer</h2>
+        <div style="margin-bottom:20px; padding-left:10px; font-size:11pt;">${partHtml || '<i>Keine Teilnehmer angegeben</i>'}</div>
+        <h2 style="color:#2563eb; border-bottom:1px solid #e2e8f0; padding-bottom:5px; font-size: 14pt;"><span style="color:#e11d48;">▶</span> Zusammenfassung</h2>
+        <div style="white-space:pre-wrap; margin-bottom:20px; padding-left:10px; font-size:11pt;">${summary || '<i>Keine Zusammenfassung eingetragen</i>'}</div>
+        <h2 style="color:#2563eb; border-bottom:1px solid #e2e8f0; padding-bottom:5px; font-size: 14pt;"><span style="color:#e11d48;">▶</span> Beschlüsse</h2>
+        <div style="margin-bottom:20px; padding-left:10px; font-size:11pt;">${decHtml || '<i>Keine Beschlüsse festgehalten</i>'}</div>
+    `;
+    container.appendChild(page1);
+
+    if (tasks.length > 0) {
+        const page2 = createPage(2);
+        page2.querySelector('.pdf-body').innerHTML = `
+            <h2 style="color:#2563eb; border-bottom:1px solid #e2e8f0; padding-bottom:5px; font-size: 14pt;"><span style="color:#e11d48;">▶</span> Aufgaben & ToDos</h2>
+            <table style="width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; font-size:10.5pt;">
+              <thead>
+                <tr style="background:#f1f5f9; color:#475569;">
+                  <th style="padding:10px; border:1px solid #cbd5e1; text-align:left;">Aufgabe / ToDo</th>
+                  <th style="padding:10px; border:1px solid #cbd5e1; text-align:left; width:25%;">Wer</th>
+                  <th style="padding:10px; border:1px solid #cbd5e1; text-align:left; width:25%;">Termin</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${taskRows}
+              </tbody>
+            </table>
+        `;
+        container.appendChild(page2);
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pages = container.querySelectorAll('.pdf-page');
+
+    for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        const canvas = await html2canvas(pages[i], { scale: 2 });
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+    }
+
+    const safeTitle = title.replace(/[^a-z0-9]/gi, '_');
+    const baseName = date ? `${date}_${safeTitle}` : safeTitle;
+    const pdfBlob = pdf.output('blob');
+
+    const jsonData = { title, date, location, participants, summary, decisions, tasks, logo: currentLogoData };
+    const jsonBlob = new Blob([JSON.stringify(jsonData, null, 2)], {type: "application/json"});
+
+    const zip = new JSZip();
+    zip.file(`${baseName}_Protokoll.pdf`, pdfBlob);
+    zip.file(`${baseName}_Daten.json`, jsonBlob);
+
+    const zipContent = await zip.generateAsync({type:"blob"});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(zipContent);
+    link.download = `${baseName}_Export.zip`;
+    link.click();
+  });
+
+  function loadSample() {
+    document.getElementById('title').value = "Projekt Status-Update";
+    document.getElementById('date').value = "2026-05-18";
+    document.getElementById('location').value = "Besprechungsraum 2 / Teams";
+    document.getElementById('participants').value = "Hilmer Jahnke\nMax Mustermann\nErika Mustermann";
+    document.getElementById('summary').value = "Besprechung des aktuellen Projektfortschritts. Die Designphase ist vollständig abgeschlossen. Die Entwicklung verläuft planmäßig nach Meilenstein-Plan.";
+    document.getElementById('decisions').value = "Freigabe des UI-Layouts erteilt\nZusätzliches Budget für Testphase genehmigt";
+    const tbody = document.querySelector('#taskTable tbody');
+    tbody.innerHTML = "";
+    addTaskRow('Code-Review für Frontend-Komponenten durchführen', 'Max', '22.05.2026');
+    addTaskRow('Test-Szenarien für die Qualitätssicherung aufsetzen', 'Erika', 'KW 22');
+  }
+  addTaskRow();
+</script>
+</body>
+</html>

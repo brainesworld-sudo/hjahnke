@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EAN‑13 Sammel‑Generator – Pure HTML/JS</title>
+  <meta name="robots" content="noindex" />
+  <!-- JsBarcode (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc; /* slate-50 */
+      --muted: #64748b; /* slate-500 */
+      --text: #0f172a; /* slate-900 */
+      --border: #cbd5e1; /* slate-300 */
+      --accent: #0f172a; /* slate-900 */
+      --focus: #0f172a; /* slate-900 */
+      --yellow: #fffbeb; /* amber-50 */
+      --yellow-border: #475569; /* slate-600 */
+      --btn: #0f172a; --btn-text: #ffffff;
+      --btn-muted: #e2e8f0; --btn-muted-text: #0f172a;
+      --error: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); background: linear-gradient(#fff, var(--bg)); }
+    h1 { margin: 0; font-size: clamp(1.5rem, 2.5vw, 2rem); font-weight: 800; letter-spacing: -0.02em; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; display: grid; gap: 24px; }
+
+    .card { background:#fff; border:1px solid var(--border); border-radius: 16px; box-shadow: 0 1px 4px rgba(15,23,42,0.04); }
+    .card-body { padding: 20px; display: grid; gap: 20px; }
+
+    .row { display: grid; gap: 16px; }
+    @media (min-width: 920px){ .row-3 { grid-template-columns: 1fr 1fr 1fr; } }
+
+    .label { font-size: 0.88rem; font-weight: 600; }
+    .muted { color: var(--muted); font-size: 0.82rem; }
+    .error { color: var(--error); font-weight: 600; }
+
+    .input { height: 40px; border-radius: 10px; border:1.5px solid var(--border); padding: 0 12px; font-size: 16px; outline: none; }
+    .input[readonly] { background: #f8fafc; color:#334155; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    /* Highlighted inputs (yellow) */
+    .inp-yellow { background: var(--yellow); border-color: var(--yellow-border); }
+    .inp-yellow:focus { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .w-220 { width: 220px; }
+    .w-140 { width: 140px; }
+
+    .btn { height: 40px; padding: 0 14px; border-radius: 10px; border:1px solid var(--border); background: var(--btn-muted); color: var(--btn-muted-text); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+    .btn:disabled { opacity: .5; cursor:not-allowed; }
+    .btn-primary { background: var(--btn); color: var(--btn-text); border-color: var(--btn); }
+
+    .table-wrap { overflow:auto; border:1px solid var(--border); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background:#f1f5f9; }
+    th, td { padding: 8px; text-align: left; border-top: 1px solid var(--border); }
+    th { font-weight: 700; font-size: .92rem; }
+    td { font-size: .92rem; }
+
+    svg { display:block; max-width: 160px; height: 60px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>EAN‑13 Sammel‑Generator (ohne Framework)</h1>
+      <p class="muted">Fester Präfix <span class="mono">4005143</span>. Bereich eingeben. Der 5‑stellige Teil wird links aufgefüllt: beginnt die Eingabe mit <b>4</b> → mit <b>4</b>, mit <b>5</b> → mit <b>5</b>, sonst mit <b>3</b> (z. B. 326 → 33326, 42 → 44442).</p>
+    </header>
+
+    <section class="card">
+      <div class="card-body">
+        <!-- Eingaben -->
+        <div class="row row-3" style="align-items: end;">
+          <div>
+            <div class="label">Präfix</div>
+            <input id="prefix" class="input mono w-140" value="4005143" readonly />
+          </div>
+          <div>
+            <div class="label">Start <span class="mono">ARTIKELNUMMER</span></div>
+            <input id="start" class="input mono inp-yellow w-220" inputmode="numeric" placeholder="z. B. 326" />
+            <div class="muted">interpretiert als <span id="start5" class="mono">—</span></div>
+          </div>
+          <div>
+            <div class="label">Ende <span class="mono">ARTIKELNUMMER</span></div>
+            <input id="end" class="input mono inp-yellow w-220" inputmode="numeric" placeholder="z. B. 508" />
+            <div class="muted">interpretiert als <span id="end5" class="mono">—</span></div>
+          </div>
+        </div>
+
+        <!-- Aktionen -->
+        <div class="row" style="grid-template-columns: auto auto 1fr; align-items:center; gap:12px;">
+          <button id="btnCreate" class="btn btn-primary">Erstellen</button>
+          <button id="btnCopy" class="btn" disabled>EAN‑Liste kopieren</button>
+          <div id="status" class="muted"></div>
+        </div>
+
+        <!-- Tabelle -->
+        <div class="table-wrap">
+          <table id="tbl">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Artikel</th>
+                <th>EAN‑13</th>
+                <th>Barcode</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <!-- rows go here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ———————————————— Constants ————————————————
+    const FIXED_PREFIX = "4005143";
+    const MAX_ROWS = 1000;
+
+    // ———————————————— Helpers ————————————————
+    const $ = (sel) => document.querySelector(sel);
+    function onlyDigits(s){ return String(s||"").replace(/\D+/g,""); }
+    function padLeftRule(numStr, targetLen){
+      const cleaned = onlyDigits(numStr).slice(0, targetLen);
+      if (cleaned.length >= targetLen) return cleaned;
+      const first = cleaned[0];
+      const padDigit = (first === '4' || first === '5') ? first : '3';
+      return padDigit.repeat(targetLen - cleaned.length) + cleaned;
+    }
+    function calcEAN13CheckDigit(d12){
+      let sumOdd=0, sumEven=0;
+      for(let i=0;i<12;i++){ const n = Number(d12[i]||0); if((i+1)%2===0) sumEven+=n; else sumOdd+=n; }
+      return String((10 - ((sumOdd + sumEven*3) % 10)) % 10);
+    }
+    function buildEAN13(base12){ const b = String(base12||"").slice(0,12); return b + calcEAN13CheckDigit(b); }
+
+    function buildRow(idx, artikel){
+      const artikel5 = padLeftRule(artikel, 5);
+      const base12 = (FIXED_PREFIX + artikel5).slice(0,12);
+      const ean13 = buildEAN13(base12);
+      return { idx, artikel, artikel5, base12, ean13 };
+    }
+
+    function copyTextRobust(text){
+      return new Promise(async (resolve)=>{
+        try{
+          if (navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return resolve(true); }
+        }catch(_){}
+        try{
+          const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.top='-1000px'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.focus(); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); resolve(ok);
+        }catch(_){ resolve(false); }
+      });
+    }
+
+    // ———————————————— UI Wiring ————————————————
+    const el = {
+      start: $('#start'), end: $('#end'),
+      start5: $('#start5'), end5: $('#end5'),
+      btnCreate: $('#btnCreate'), btnCopy: $('#btnCopy'),
+      status: $('#status'),
+      tbody: $('#tbody')
+    };
+
+    function updateInterpreted(){
+      el.start5.textContent = onlyDigits(el.start.value) ? padLeftRule(el.start.value, 5) : "—";
+      el.end5.textContent   = onlyDigits(el.end.value) ? padLeftRule(el.end.value, 5)   : "—";
+    }
+
+    function validateRange(){
+      const sStr = onlyDigits(el.start.value);
+      const eStr = onlyDigits(el.end.value);
+      if (!sStr || !eStr) return { ok:false, reason:"Bitte Start und Ende eingeben" };
+      const s = Number(sStr), e = Number(eStr);
+      if (!Number.isFinite(s) || !Number.isFinite(e)) return { ok:false, reason:"Bitte gültige Zahlen eingeben" };
+      if (s > e) return { ok:false, reason:"Start muss kleiner/gleich Ende sein" };
+      const count = e - s + 1;
+      if (count > MAX_ROWS) return { ok:false, reason:`Maximal ${MAX_ROWS} Zeilen in der Vorschau.` };
+      return { ok:true, s, e, count };
+    }
+
+    function clearTable(){ el.tbody.innerHTML = ""; }
+
+    function renderRows(rows){
+      const frag = document.createDocumentFragment();
+      rows.forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.idx}</td>
+          <td>${r.artikel}</td>
+          <td class="mono">${r.ean13}</td>
+          <td><svg id="code-${r.idx}"></svg></td>
+        `;
+        frag.appendChild(tr);
+      });
+      clearTable();
+      el.tbody.appendChild(frag);
+
+      // Render each barcode
+      rows.forEach((r) => {
+        const svg = document.getElementById(`code-${r.idx}`);
+        try{
+          JsBarcode(svg, r.ean13, {
+            format: 'ean13',
+            width: 1.5,
+            height: 28,
+            displayValue: true,
+            margin: 4,
+            marginTop: 4,
+            marginBottom: 16, // genug Platz für Ziffern
+            fontSize: 12,
+            textMargin: 2,
+            lineColor: '#000'
+          });
+        }catch(_){}}
+      );
+    }
+
+    function onCreate(){
+      const rng = validateRange();
+      if (!rng.ok){ el.status.textContent = rng.reason; el.status.className = "error"; return; }
+      el.status.textContent = `Einträge: ${rng.s}–${rng.e} (gesamt ${rng.count})`; el.status.className = "muted";
+      const rows = [];
+      for(let n=rng.s, i=1; n<=rng.e; n++, i++){
+        rows.push(buildRow(i, String(n)));
+      }
+      renderRows(rows);
+      el.btnCopy.disabled = rows.length === 0;
+      el.btnCopy._rows = rows; // store for copy
+    }
+
+    function onCopy(){
+      const rows = el.btnCopy._rows || [];
+      const text = rows.map(r => r.ean13).join('\n');
+      copyTextRobust(text).then(ok => {
+        el.status.textContent = ok ? "EAN‑Liste kopiert" : "Kopieren blockiert";
+        el.status.className = ok ? "muted" : "error";
+        setTimeout(() => {
+          const rng = validateRange();
+          if (rng.ok) { el.status.textContent = `Einträge: ${rng.s}–${rng.e} (gesamt ${rng.count})`; el.status.className = "muted"; }
+          else { el.status.textContent = ""; }
+        }, 1600);
+      });
+    }
+
+    // Input sanitizing & live info
+    ['input','change'].forEach(evt => {
+      el.start.addEventListener(evt, (e) => { e.target.value = onlyDigits(e.target.value); updateInterpreted(); });
+      el.end.addEventListener(evt,   (e) => { e.target.value = onlyDigits(e.target.value); updateInterpreted(); });
+    });
+
+    el.btnCreate.addEventListener('click', onCreate);
+    el.btnCopy.addEventListener('click', onCopy);
+
+    updateInterpreted();
+
+    // ———————————————— Lightweight tests (console) ————————————————
+    try{
+      // Checkdigit examples
+      console.assert(calcEAN13CheckDigit("400638133393") === "1", "Checkdigit 400638133393 → 1");
+      console.assert(buildEAN13("400638133393") === "4006381333931", "EAN 4006381333931");
+
+      // Padding rule
+      console.assert(padLeftRule("7",5) === "33337", "Default padding 3");
+      console.assert(padLeftRule("42",5) === "44442", "Starts with 4 → pad 4");
+      console.assert(padLeftRule("5",5) === "55555", "Starts with 5 → pad 5");
+      console.assert(padLeftRule("",5) === "33333", "Empty → pad 3");
+      console.assert(padLeftRule("987654",5) === "98765", "Trim to 5 if longer");
+    }catch(e){
+      console.error("Testfehler:", e);
+    }
+  </script>
+</body>
+</html>
